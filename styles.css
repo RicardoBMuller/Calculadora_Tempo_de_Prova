@@ -1293,3 +1293,24 @@ body.intro-finished .app-shell {
     margin: -27.5px 0 0 -27.5px;
   }
 }
+
+/* ==========================================================
+   V5 — fluxo simplificado: apenas Horário de Início + Duração
+   ========================================================== */
+.single-input-grid {
+  grid-template-columns: 1fr !important;
+}
+
+.single-input-grid .field-card {
+  width: 100%;
+}
+
+.timeline-simple .timeline-progress {
+  width: 0;
+}
+
+@media (min-width: 781px) {
+  .single-input-grid .field-card {
+    min-height: 122px;
+  }
+}

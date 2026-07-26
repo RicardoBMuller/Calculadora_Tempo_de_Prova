@@ -1,32 +1,29 @@
 (() => {
   "use strict";
 
-  const HISTORY_KEY = "fcc_exam_time_history_v1";
+  const HISTORY_KEY = "fcc_exam_time_history_single_v1";
   const MAX_HISTORY = 5;
+  const INTRO_DURATION = 4000;
 
   const el = {
     form: document.getElementById("examForm"),
-    scheduledStart: document.getElementById("scheduledStart"),
-    actualStart: document.getElementById("actualStart"),
+    startTime: document.getElementById("startTime"),
     durationHours: document.getElementById("durationHours"),
     durationMinutes: document.getElementById("durationMinutes"),
     validation: document.getElementById("validationMessage"),
     quickButtons: [...document.querySelectorAll(".quick-times button")],
     reset: document.getElementById("resetBtn"),
     resultCard: document.getElementById("resultCard"),
-    scheduledEnd: document.getElementById("scheduledEnd"),
-    delayValue: document.getElementById("delayValue"),
-    deltaLabel: document.getElementById("deltaLabel"),
+    endTime: document.getElementById("endTime"),
+    resultStart: document.getElementById("resultStart"),
+    resultEnd: document.getElementById("resultEnd"),
     durationValue: document.getElementById("durationValue"),
-    newEndTime: document.getElementById("newEndTime"),
     dayIndicator: document.getElementById("dayIndicator"),
     statusPill: document.getElementById("statusPill"),
     timelineCaption: document.getElementById("timelineCaption"),
     timelineProgress: document.getElementById("timelineProgress"),
-    timelineScheduled: document.getElementById("timelineScheduled"),
-    timelineActual: document.getElementById("timelineActual"),
+    timelineStart: document.getElementById("timelineStart"),
     timelineEnd: document.getElementById("timelineEnd"),
-    actualPoint: document.getElementById("actualPoint"),
     summary: document.getElementById("summaryText"),
     copy: document.getElementById("copyBtn"),
     toast: document.getElementById("toast"),
@@ -34,14 +31,12 @@
     history: document.getElementById("historyList"),
     clearHistory: document.getElementById("clearHistoryBtn"),
     introScreen: document.getElementById("introScreen"),
-    logos: [...document.querySelectorAll(".fcc-logo")],
-    logoFallbacks: [...document.querySelectorAll(".logo-fallback")]
+    logos: [...document.querySelectorAll(".fcc-logo")]
   };
 
   let lastResult = null;
   let toastTimer = null;
   let autoTimer = null;
-
 
   function enableLogoFallback(img) {
     if (!img) return;
@@ -52,7 +47,6 @@
 
   function setupLogos() {
     el.logos.forEach((img) => {
-      if (!img) return;
       img.addEventListener("error", () => enableLogoFallback(img), { once: true });
       if (img.complete && (!img.naturalWidth || img.naturalWidth === 0)) {
         enableLogoFallback(img);
@@ -61,8 +55,6 @@
   }
 
   function initIntro() {
-    const introDuration = 4000;
-
     window.setTimeout(() => {
       document.body.classList.remove("intro-playing");
       document.body.classList.add("intro-finished");
@@ -71,38 +63,23 @@
         el.introScreen.setAttribute("aria-hidden", "true");
         window.setTimeout(() => {
           el.introScreen.style.display = "none";
-        }, 500);
+        }, 550);
       }
-    }, introDuration);
+    }, INTRO_DURATION);
   }
 
   function parseTime(value) {
     if (!/^\d{2}:\d{2}$/.test(value || "")) return null;
     const [hours, minutes] = value.split(":").map(Number);
-    if (hours > 23 || minutes > 59) return null;
-    return hours * 60 + minutes;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return (hours * 60) + minutes;
   }
 
   function formatClock(totalMinutes) {
     const normalized = ((totalMinutes % 1440) + 1440) % 1440;
-    const h = Math.floor(normalized / 60);
-    const m = normalized % 60;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-  }
-
-  function signedDelta(actual, scheduled) {
-    let diff = actual - scheduled;
-    if (diff > 720) diff -= 1440;
-    if (diff < -720) diff += 1440;
-    return diff;
-  }
-
-  function formatDuration(minutes) {
-    if (minutes < 60) return `${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    const rest = minutes % 60;
-    if (!rest) return hours === 1 ? "1 h" : `${hours} h`;
-    return `${hours}h${String(rest).padStart(2, "0")}`;
+    const hours = Math.floor(normalized / 60);
+    const minutes = normalized % 60;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   }
 
   function formatDurationClock(totalMinutes) {
@@ -111,9 +88,12 @@
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   }
 
-  function pluralMinutes(value) {
-    const n = Math.abs(value);
-    return `${n} ${n === 1 ? "minuto" : "minutos"}`;
+  function formatDurationText(totalMinutes) {
+    if (totalMinutes < 60) return `${totalMinutes} min`;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (minutes === 0) return hours === 1 ? "1 hora" : `${hours} horas`;
+    return `${hours}h${String(minutes).padStart(2, "0")}`;
   }
 
   function sanitizeDurationPart(input) {
@@ -124,145 +104,80 @@
     const hoursRaw = el.durationHours.value.trim();
     const minutesRaw = el.durationMinutes.value.trim();
 
-    if (hoursRaw !== "") {
-      el.durationHours.value = String(Math.min(Number(hoursRaw) || 0, 99)).padStart(2, "0");
-    }
-
-    if (minutesRaw !== "") {
-      el.durationMinutes.value = String(Math.min(Number(minutesRaw) || 0, 59)).padStart(2, "0");
-    }
+    el.durationHours.value = String(Math.min(Number(hoursRaw) || 0, 12)).padStart(2, "0");
+    el.durationMinutes.value = String(Math.min(Number(minutesRaw) || 0, 59)).padStart(2, "0");
   }
 
   function getDurationMinutes() {
     const hoursText = el.durationHours.value.trim();
     const minutesText = el.durationMinutes.value.trim();
 
-    if (!/^\d{1,2}$/.test(hoursText) || !/^\d{1,2}$/.test(minutesText)) {
-      return null;
-    }
+    if (!/^\d{1,2}$/.test(hoursText) || !/^\d{1,2}$/.test(minutesText)) return null;
 
     const hours = Number(hoursText);
     const minutes = Number(minutesText);
-
-    if (!Number.isInteger(hours) || !Number.isInteger(minutes) || minutes > 59) {
-      return null;
-    }
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes) || minutes > 59) return null;
 
     const total = (hours * 60) + minutes;
     if (total < 1 || total > 720) return null;
-
     return total;
   }
 
   function setDurationFields(totalMinutes) {
     const total = Number(totalMinutes);
-    const hours = Math.floor(total / 60);
-    const minutes = total % 60;
-
-    el.durationHours.value = String(hours).padStart(2, "0");
-    el.durationMinutes.value = String(minutes).padStart(2, "0");
+    el.durationHours.value = String(Math.floor(total / 60)).padStart(2, "0");
+    el.durationMinutes.value = String(total % 60).padStart(2, "0");
   }
 
   function validate() {
-    const scheduled = parseTime(el.scheduledStart.value);
-    const actual = parseTime(el.actualStart.value);
+    const start = parseTime(el.startTime.value);
     const duration = getDurationMinutes();
 
-    if (scheduled === null || actual === null) {
-      return { ok: false, message: "Preencha os dois horários para calcular." };
+    if (start === null) {
+      return { ok: false, message: "Informe um horário de início válido." };
     }
 
     if (duration === null) {
       return { ok: false, message: "Informe uma duração válida entre 00:01 e 12:00." };
     }
 
-    return { ok: true, scheduled, actual, duration };
+    return { ok: true, start, duration };
   }
 
-  function buildResult({ scheduled, actual, duration }) {
-    const delta = signedDelta(actual, scheduled);
-    const scheduledEndAbs = scheduled + duration;
-    const actualAbs = scheduled + delta;
-    const newEndAbs = actualAbs + duration;
-    const scheduledEnd = formatClock(scheduledEndAbs);
-    const newEnd = formatClock(newEndAbs);
-    const crossesDay = newEndAbs >= 1440 || newEndAbs < 0;
-
-    let status = "on-time";
-    let statusText = "No horário";
-    let deltaLabel = "Variação no início";
-    let deltaDisplay = "0 min";
-    let timelineCaption = "Sem alteração no horário";
-    let movementText = "começou no horário previsto";
-
-    if (delta > 0) {
-      status = "delayed";
-      statusText = `+${delta} min`;
-      deltaLabel = "Atraso no início";
-      deltaDisplay = `${delta} min`;
-      timelineCaption = `+${delta} ${delta === 1 ? "minuto deslocado" : "minutos deslocados"}`;
-      movementText = `começou às ${formatClock(actual)}, com ${pluralMinutes(delta)} de atraso`;
-    } else if (delta < 0) {
-      status = "early";
-      statusText = `${delta} min`;
-      deltaLabel = "Adiantamento";
-      deltaDisplay = `${Math.abs(delta)} min`;
-      timelineCaption = `${Math.abs(delta)} ${Math.abs(delta) === 1 ? "minuto adiantado" : "minutos adiantados"}`;
-      movementText = `começou às ${formatClock(actual)}, com ${pluralMinutes(delta)} de adiantamento`;
-    }
-
-    const summary = delta === 0
-      ? `A prova começou no horário previsto, às ${formatClock(scheduled)}. Mantendo ${formatDuration(duration)} de duração, o encerramento permanece às ${scheduledEnd}.`
-      : `A prova prevista para ${formatClock(scheduled)} ${movementText}. Mantendo ${formatDuration(duration)} de duração, o encerramento passa de ${scheduledEnd} para ${newEnd}${crossesDay ? " (dia seguinte)" : ""}.`;
+  function buildResult({ start, duration }) {
+    const endAbsolute = start + duration;
+    const startClock = formatClock(start);
+    const endClock = formatClock(endAbsolute);
+    const durationClock = formatDurationClock(duration);
+    const crossesDay = endAbsolute >= 1440;
 
     return {
-      scheduled: formatClock(scheduled),
-      actual: formatClock(actual),
+      start: startClock,
+      end: endClock,
       duration,
-      durationText: formatDuration(duration),
-      durationClock: formatDurationClock(duration),
-      delta,
-      scheduledEnd,
-      newEnd,
+      durationClock,
+      durationText: formatDurationText(duration),
       crossesDay,
-      status,
-      statusText,
-      deltaLabel,
-      deltaDisplay,
-      timelineCaption,
-      summary
+      summary: `A prova começa às ${startClock} e possui duração de ${durationClock}. O horário de encerramento é ${endClock}${crossesDay ? " do dia seguinte" : ""}.`
     };
-  }
-
-  function timelineActualPercent(result) {
-    const duration = Math.max(result.duration, 1);
-    const proportional = 36 + (result.delta / duration) * 28;
-    return Math.min(78, Math.max(18, proportional));
   }
 
   function render(result, animate = true) {
     lastResult = result;
     el.validation.textContent = "";
 
-    el.scheduledEnd.textContent = result.scheduledEnd;
-    el.delayValue.textContent = result.deltaDisplay;
-    el.deltaLabel.textContent = result.deltaLabel;
-    el.durationValue.textContent = result.durationText;
-    el.newEndTime.textContent = result.newEnd;
+    el.endTime.textContent = result.end;
+    el.resultStart.textContent = result.start;
+    el.resultEnd.textContent = result.end;
+    el.durationValue.textContent = result.durationClock;
+    el.statusPill.textContent = result.durationClock;
+    el.timelineStart.textContent = result.start;
+    el.timelineEnd.textContent = result.end;
+    el.timelineCaption.textContent = `${result.durationClock} de duração`;
+    el.summary.textContent = result.summary;
     el.dayIndicator.classList.toggle("hidden", !result.crossesDay);
 
-    el.statusPill.className = `result-status ${result.status}`;
-    el.statusPill.textContent = result.statusText;
-
-    el.timelineScheduled.textContent = result.scheduled;
-    el.timelineActual.textContent = result.actual;
-    el.timelineEnd.textContent = result.newEnd;
-    el.timelineCaption.textContent = result.timelineCaption;
-    el.summary.textContent = result.summary;
-
-    el.actualPoint.style.left = `${timelineActualPercent(result)}%`;
     el.timelineProgress.style.width = "0%";
-
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         el.timelineProgress.style.width = "100%";
@@ -294,12 +209,8 @@
 
   function updateQuickButtons() {
     const current = getDurationMinutes();
-
     el.quickButtons.forEach((button) => {
-      button.classList.toggle(
-        "active",
-        current !== null && Number(button.dataset.minutes) === current
-      );
+      button.classList.toggle("active", current !== null && Number(button.dataset.minutes) === current);
     });
   }
 
@@ -314,10 +225,7 @@
     el.toastText.textContent = message;
     el.toast.classList.add("show");
     window.clearTimeout(toastTimer);
-
-    toastTimer = window.setTimeout(() => {
-      el.toast.classList.remove("show");
-    }, 2200);
+    toastTimer = window.setTimeout(() => el.toast.classList.remove("show"), 2200);
   }
 
   function loadHistory() {
@@ -339,20 +247,17 @@
 
   function saveHistory(result) {
     const entry = {
-      scheduled: result.scheduled,
-      actual: result.actual,
+      start: result.start,
       duration: result.duration,
-      newEnd: result.newEnd,
-      delta: result.delta,
+      end: result.end,
       savedAt: Date.now()
     };
 
     const history = loadHistory();
     const duplicate = history.findIndex((item) =>
-      item.scheduled === entry.scheduled &&
-      item.actual === entry.actual &&
+      item.start === entry.start &&
       Number(item.duration) === entry.duration &&
-      item.newEnd === entry.newEnd
+      item.end === entry.end
     );
 
     if (duplicate >= 0) history.splice(duplicate, 1);
@@ -374,23 +279,16 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "history-item";
-
-      const delta = Number(item.delta) || 0;
-      const deltaText = delta > 0
-        ? `+${delta} min`
-        : delta < 0
-          ? `${delta} min`
-          : "no horário";
+      const durationClock = formatDurationClock(Number(item.duration));
 
       button.innerHTML = `
-        <span>${item.scheduled} → ${item.actual}</span>
-        <strong>${item.newEnd}</strong>
-        <small>${formatDuration(Number(item.duration))} • ${deltaText}</small>
+        <span>${item.start} → ${item.end}</span>
+        <strong>${item.end}</strong>
+        <small>${durationClock} de duração</small>
       `;
 
       button.addEventListener("click", () => {
-        el.scheduledStart.value = item.scheduled;
-        el.actualStart.value = item.actual;
+        el.startTime.value = item.start;
         setDurationFields(Number(item.duration));
         calculate({ animate: true, save: false });
 
@@ -406,7 +304,7 @@
   async function copySummary() {
     if (!lastResult) return;
 
-    const text = `Cálculo de duração da prova\nInício previsto: ${lastResult.scheduled}\nInício real: ${lastResult.actual}\nDuração: ${lastResult.durationClock} (${lastResult.durationText})\nTérmino previsto: ${lastResult.scheduledEnd}\nNovo término: ${lastResult.newEnd}\n${lastResult.deltaLabel}: ${lastResult.deltaDisplay}\n\n${lastResult.summary}`;
+    const text = `Cálculo de duração da prova\nHorário de início: ${lastResult.start}\nDuração: ${lastResult.durationClock} (${lastResult.durationText})\nHorário de encerramento: ${lastResult.end}${lastResult.crossesDay ? " — dia seguinte" : ""}\n\n${lastResult.summary}`;
 
     try {
       await navigator.clipboard.writeText(text);
@@ -428,7 +326,6 @@
   el.form.addEventListener("submit", (event) => {
     event.preventDefault();
     normalizeDurationFields();
-
     const result = calculate({ animate: true, save: true });
 
     if (result && window.innerWidth < 781) {
@@ -438,10 +335,8 @@
     }
   });
 
-  [el.scheduledStart, el.actualStart].forEach((input) => {
-    input.addEventListener("input", scheduleAutoCalculate);
-    input.addEventListener("change", scheduleAutoCalculate);
-  });
+  el.startTime.addEventListener("input", scheduleAutoCalculate);
+  el.startTime.addEventListener("change", scheduleAutoCalculate);
 
   [el.durationHours, el.durationMinutes].forEach((input) => {
     input.addEventListener("input", () => {
@@ -468,11 +363,10 @@
   });
 
   el.reset.addEventListener("click", () => {
-    el.scheduledStart.value = "10:00";
-    el.actualStart.value = "10:00";
+    el.startTime.value = "10:08";
     setDurationFields(50);
     calculate({ animate: true, save: false });
-    el.scheduledStart.focus();
+    el.startTime.focus();
   });
 
   el.copy.addEventListener("click", copySummary);

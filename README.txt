@@ -1,19 +1,21 @@
-FCC - Calculadora de Duração de Provas
+FCC - Calculadora de duração de provas
 
-Arquivos para publicar no GitHub Pages:
+VERSÃO SIMPLIFICADA
+
+Agora existem somente dois dados para o cálculo:
+1. Horário de Início
+2. Duração da prova (HH:MM)
+
+Exemplo:
+Horário de Início: 10:08
+Duração: 00:50
+Encerramento: 10:58
+
+Arquivos:
 - index.html
 - styles.css
 - app.js
 - logo-fcc.jpg
 - .nojekyll
 
-A introdução dura aproximadamente 4 segundos, com fade in/fade out.
-O logotipo enviado foi incorporado como logo-fcc.jpg.
-
-No celular:
-- logo da tela principal: 54x54 px (48x48 em telas muito estreitas)
-- logo da introdução: 96x96 px
-- ambos são recortados em círculo e possuem dois anéis animados ao redor
-
-Para atualizar no GitHub Pages, substitua todos os arquivos de uma vez.
-O HTML usa ?v=4 no CSS/JS para reduzir problemas de cache do navegador/GitHub Pages.
+Para GitHub Pages, coloque todos os arquivos diretamente na raiz do repositório.

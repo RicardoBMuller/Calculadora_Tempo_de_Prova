@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#17171f">
-  <meta name="description" content="Calculadora de duração de provas com ajuste automático por atraso ou adiantamento no início.">
+  <meta name="description" content="Calculadora de duração de provas a partir do horário de início e da duração definida.">
   <title>FCC • Calculadora de Provas</title>
   <link rel="icon" href="logo-fcc.jpg" type="image/jpeg">
   <style>
-    /* Proteção contra imagem gigante antes do CSS externo carregar */
+    /* Evita o logo gigante antes do CSS externo terminar de carregar. */
     .fcc-avatar-img{display:block;object-fit:cover;border-radius:50%;}
     .fcc-avatar-img--intro{width:112px!important;height:112px!important;max-width:112px!important;max-height:112px!important;}
     .fcc-avatar-img--site{width:64px!important;height:64px!important;max-width:64px!important;max-height:64px!important;}
@@ -17,7 +17,7 @@
       .fcc-avatar-img--site{width:54px!important;height:54px!important;max-width:54px!important;max-height:54px!important;}
     }
   </style>
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body class="intro-playing">
   <div class="intro-screen" id="introScreen" aria-hidden="true">
@@ -42,9 +42,7 @@
         <h1>Calculadora de duração de provas</h1>
         <p>Preparando a experiência...</p>
       </div>
-      <div class="intro-loader" aria-hidden="true">
-        <span></span><span></span><span></span>
-      </div>
+      <div class="intro-loader" aria-hidden="true"><span></span><span></span><span></span></div>
     </div>
   </div>
 
@@ -78,8 +76,7 @@
           <span class="mini-icon" aria-hidden="true">↗</span>
         </div>
         <p class="panel-text">
-          Informe o horário previsto, o horário em que a prova realmente começou e a duração definida.
-          O encerramento é recalculado sem alterar o tempo disponível da prova.
+          Informe o horário em que a prova começou e a duração total. O sistema calcula automaticamente o horário correto de encerramento.
         </p>
       </section>
 
@@ -88,11 +85,10 @@
           <span>Exemplo</span>
           <span class="status-dot"></span>
         </div>
-        <div class="example-row"><span>Previsto</span><strong>10:00</strong></div>
-        <div class="example-row"><span>Início real</span><strong>10:08</strong></div>
+        <div class="example-row"><span>Horário de início</span><strong>10:08</strong></div>
         <div class="example-row"><span>Duração</span><strong>00:50</strong></div>
         <div class="example-result">
-          <span>Novo encerramento</span>
+          <span>Encerramento</span>
           <strong>10:58</strong>
         </div>
       </section>
@@ -115,7 +111,7 @@
         <div>
           <p class="eyebrow">CONTROLE DE TEMPO</p>
           <h2>Calculadora de duração de provas</h2>
-          <p class="topbar-subtitle">Compense atrasos no início e preserve exatamente o tempo previsto para a prova.</p>
+          <p class="topbar-subtitle">Informe o horário de início e a duração da prova para obter o horário exato de encerramento.</p>
         </div>
         <div class="live-badge"><span></span> cálculo instantâneo</div>
       </header>
@@ -125,7 +121,7 @@
           <div class="section-heading">
             <div>
               <span class="step-label">ETAPA 01</span>
-              <h3>Informe os horários</h3>
+              <h3>Informe o horário e a duração</h3>
             </div>
             <div class="clock-orbit" aria-hidden="true">
               <span class="clock-hand hand-hour"></span>
@@ -135,23 +131,14 @@
           </div>
 
           <form id="examForm" novalidate>
-            <div class="input-grid">
-              <label class="field-card" for="scheduledStart">
-                <span class="field-icon">◷</span>
-                <span class="field-copy">
-                  <span class="field-label">Início previsto</span>
-                  <span class="field-help">Horário oficial da prova</span>
-                </span>
-                <input id="scheduledStart" class="time-input" type="time" value="10:00" required>
-              </label>
-
-              <label class="field-card" for="actualStart">
+            <div class="input-grid single-input-grid">
+              <label class="field-card" for="startTime">
                 <span class="field-icon accent-icon">▶</span>
                 <span class="field-copy">
-                  <span class="field-label">Início real</span>
-                  <span class="field-help">Horário em que ela começou</span>
+                  <span class="field-label">Horário de Início</span>
+                  <span class="field-help">Horário em que a prova começou</span>
                 </span>
-                <input id="actualStart" class="time-input" type="time" value="10:08" required>
+                <input id="startTime" class="time-input" type="time" value="10:08" required>
               </label>
             </div>
 
@@ -159,7 +146,7 @@
               <div class="duration-header">
                 <div>
                   <span class="field-label">Duração da prova</span>
-                  <span class="field-help">Tempo total que deve ser preservado</span>
+                  <span class="field-help">Tempo total disponível para realização</span>
                 </div>
                 <div class="duration-input-wrap" aria-label="Duração da prova em horas e minutos">
                   <input id="durationHours" type="text" inputmode="numeric" maxlength="2" value="00" aria-label="Horas de duração" autocomplete="off" required>
@@ -193,46 +180,41 @@
               <span class="step-label">ETAPA 02</span>
               <h3>Resultado</h3>
             </div>
-            <span id="statusPill" class="result-status delayed">+8 min</span>
+            <span id="statusPill" class="result-status delayed">00:50</span>
           </div>
 
           <div class="result-hero">
-            <p>Novo horário de encerramento</p>
-            <div class="new-end-time" id="newEndTime">10:58</div>
+            <p>Horário de encerramento</p>
+            <div class="new-end-time" id="endTime">10:58</div>
             <span id="dayIndicator" class="day-indicator hidden">dia seguinte</span>
           </div>
 
           <div class="metric-grid">
             <div class="metric-card">
-              <span class="metric-icon">◎</span>
-              <div><span>Término previsto</span><strong id="scheduledEnd">10:50</strong></div>
-            </div>
-            <div class="metric-card">
-              <span class="metric-icon">↗</span>
-              <div><span id="deltaLabel">Atraso no início</span><strong id="delayValue">8 min</strong></div>
+              <span class="metric-icon">▶</span>
+              <div><span>Horário de início</span><strong id="resultStart">10:08</strong></div>
             </div>
             <div class="metric-card">
               <span class="metric-icon">⌛</span>
-              <div><span>Duração preservada</span><strong id="durationValue">50 min</strong></div>
+              <div><span>Duração</span><strong id="durationValue">00:50</strong></div>
+            </div>
+            <div class="metric-card">
+              <span class="metric-icon">✓</span>
+              <div><span>Encerramento</span><strong id="resultEnd">10:58</strong></div>
             </div>
           </div>
 
           <div class="timeline-wrap">
             <div class="timeline-topline">
               <span>Linha do tempo</span>
-              <span id="timelineCaption">+8 minutos deslocados</span>
+              <span id="timelineCaption">00:50 de duração</span>
             </div>
-            <div class="timeline" id="timeline">
+            <div class="timeline timeline-simple" id="timeline">
               <div class="timeline-track"><div class="timeline-progress" id="timelineProgress"></div></div>
               <div class="timeline-point point-scheduled">
                 <span class="point-dot"></span>
-                <strong id="timelineScheduled">10:00</strong>
-                <small>Previsto</small>
-              </div>
-              <div class="timeline-point point-actual" id="actualPoint">
-                <span class="point-dot"></span>
-                <strong id="timelineActual">10:08</strong>
-                <small>Início real</small>
+                <strong id="timelineStart">10:08</strong>
+                <small>Início</small>
               </div>
               <div class="timeline-point point-end">
                 <span class="point-dot"></span>
@@ -244,7 +226,7 @@
 
           <div class="summary-box">
             <div class="summary-icon" aria-hidden="true">✓</div>
-            <p id="summaryText">A prova prevista para 10:00 começou às 10:08, com 8 minutos de atraso. Mantendo os 50 minutos de duração, o encerramento passa de 10:50 para 10:58.</p>
+            <p id="summaryText">A prova começa às 10:08 e possui duração de 00:50. O horário de encerramento é 10:58.</p>
           </div>
 
           <button class="btn btn-copy" id="copyBtn" type="button"><span>▣</span> Copiar resumo</button>
@@ -262,6 +244,6 @@
     <span id="toastText">Resumo copiado!</span>
   </div>
 
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
