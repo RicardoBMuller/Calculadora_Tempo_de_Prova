@@ -1,47 +1,57 @@
-CALCULADORA FCC + OCR.SPACE — VERSÃO CORRIGIDA
-==============================================
+CALCULADORA FCC • OCR.SPACE • v10
 
-CONFIGURAÇÃO RÁPIDA
+Esta versão possui:
+- entrada manual do Horário de Início;
+- entrada manual da Duração da Prova;
+- Permanência Mínima em destaque;
+- captura de foto pela câmera do celular;
+- leitura OCR.Space Engine 3;
+- confirmação dos campos lidos antes do cálculo;
+- cálculo baseado SOMENTE em Horário de Início + Duração;
+- o campo Término do cartão é ignorado, mesmo se estiver preenchido incorretamente;
+- cálculo do horário mínimo de liberação: Início + Permanência Mínima;
+- resultado exibido também em modal moderno;
+- histórico local e cópia do resumo;
+- intro e identidade visual FCC mantidas.
+
+CONFIGURAÇÃO
 
 1. Abra config.js.
-2. Troque COLE_AQUI_SUA_CHAVE_OCR_SPACE pela sua chave gratuita.
-3. Salve.
-4. Envie TODOS os arquivos desta pasta para a raiz do GitHub Pages.
-5. No celular, use "Fotografar cartão".
+2. Em OCRSPACE_API_KEY, cole sua chave do OCR.Space.
+3. Publique todos os arquivos na raiz do GitHub Pages.
 
-COMO FUNCIONA
+Exemplo:
 
-- Continua existindo a digitação manual de Horário de Início e Duração.
-- A interface não possui mais botão de upload/galeria; há somente a captura por câmera.
-- A foto é compactada e enviada ao OCR.Space Engine 3.
-- O código procura: Início, Duração da Prova, Término e Permanência mínima.
-- O Término reconhecido agora é usado como validação cruzada.
+window.FCC_CONFIG = {
+  OCRSPACE_API_KEY: "SUA_CHAVE_AQUI",
+  OCRSPACE_ENDPOINT: "https://api.ocr.space/parse/image",
+  OCRSPACE_ENGINE: "3"
+};
 
-EXEMPLO REAL DA CORREÇÃO
+LÓGICA DO CARTÃO
 
-Texto OCR:
-  Duração da Prova: 00h50
-  Início: 09 : 12 h
-  Término: 10 : 02 h
+O OCR procura principalmente:
+1. Duração da Prova
+2. Início
+3. Permanência mínima
 
-Resultado reconhecido:
-  Início: 09:12
-  Duração: 00:50
-  Encerramento: 10:02
+O campo Término pode estar correto, incorreto ou vazio. Ele NÃO participa do cálculo.
 
-A versão anterior podia converter as letras de "Início" em números durante a
-normalização e interpretar incorretamente o campo como 00:09. Isso foi corrigido.
-Agora somente os caracteres do próprio token de horário são normalizados.
+Exemplo:
+Início lido: 09:12
+Duração: 00:50
+Término escrito no cartão: 10:20 (incorreto)
 
-VALIDAÇÃO CRUZADA
+Resultado do sistema:
+09:12 + 00:50 = 10:02
 
-Quando Duração e Término são reconhecidos, o site também calcula o início esperado:
-  10:02 - 00:50 = 09:12
+Com Permanência mínima 00:30:
+09:12 + 00:30 = 09:42
 
-Se o horário de início reconhecido divergir desse valor, o site usa a conferência
-Duração + Término para corrigir o início e mostra uma observação na tela.
+Ou seja:
+Encerramento: 10:02
+Liberação mínima: 09:42
 
-IMPORTANTE
+SEGURANÇA
 
-A chave OCR.Space fica em config.js porque este projeto é estático no GitHub Pages.
-Não coloque outras senhas ou tokens corporativos nesse arquivo.
+Como o site é estático no GitHub Pages, a chave gratuita do OCR.Space fica visível no config.js para quem inspecionar o código-fonte. Não coloque senhas, chaves privadas ou dados corporativos secretos nesse arquivo.

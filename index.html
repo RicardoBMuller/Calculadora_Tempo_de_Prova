@@ -17,7 +17,7 @@
       .fcc-avatar-img--site{width:54px!important;height:54px!important;max-width:54px!important;max-height:54px!important;}
     }
   </style>
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body class="intro-playing">
   <div class="intro-screen" id="introScreen" aria-hidden="true">
@@ -76,7 +76,7 @@
           <span class="mini-icon" aria-hidden="true">↗</span>
         </div>
         <p class="panel-text">
-          Digite o horário e a duração ou fotografe o cartão da prova. A leitura por foto preenche os campos para você confirmar antes do cálculo.
+          Digite o horário e a duração ou fotografe o cartão da prova. Pela foto, o sistema lê o início, a duração e a permanência mínima. O campo “Término” do cartão não é usado no cálculo.
         </p>
       </section>
 
@@ -134,13 +134,13 @@
             <div class="ai-scan-copy">
               <span class="ai-chip">OCR • LEITURA POR FOTO</span>
               <h4 id="aiScanTitle">Fotografe o cartão da prova</h4>
-              <p>A câmera lê o horário de início manuscrito e a duração impressa usando OCR.Space. Quando o término também for reconhecido, ele é usado para validar automaticamente o horário de início. Você confirma os dados antes do cálculo.</p>
+              <p>A câmera lê o horário de início, a duração da prova e a permanência mínima usando OCR.Space. O cálculo sempre parte do horário de início + duração; qualquer valor preenchido em “Término” no cartão é ignorado.</p>
             </div>
             <div class="ai-scan-actions camera-only">
               <input id="examPhotoInput" class="visually-hidden" type="file" accept="image/*" capture="environment">
               <button class="btn btn-camera" id="takePhotoBtn" type="button"><span>📷</span> Fotografar cartão</button>
             </div>
-            <div class="ai-note"><span>✦</span> A foto é enviada ao OCR.Space somente para extrair o texto do cartão. Confira os dados antes de confirmar.</div>
+            <div class="ai-note"><span>✦</span> A foto é enviada ao OCR.Space somente para extrair os campos necessários. Início e duração definem o encerramento; a permanência mínima é exibida em destaque.</div>
           </section>
 
           <form id="examForm" novalidate>
@@ -175,6 +175,21 @@
                 <button type="button" data-minutes="60">1 h</button>
                 <button type="button" data-minutes="90">1h30</button>
                 <button type="button" data-minutes="120">2 h</button>
+              </div>
+            </div>
+
+            <div class="minimum-block">
+              <div class="minimum-copy">
+                <span class="minimum-icon" aria-hidden="true">⏱</span>
+                <div>
+                  <span class="field-label">Permanência mínima</span>
+                  <span class="field-help">Tempo mínimo antes da liberação do candidato</span>
+                </div>
+              </div>
+              <div class="minimum-input-wrap" aria-label="Permanência mínima em horas e minutos">
+                <input id="minimumHours" type="text" inputmode="numeric" maxlength="2" value="00" aria-label="Horas de permanência mínima" autocomplete="off" required>
+                <span class="duration-separator" aria-hidden="true">:</span>
+                <input id="minimumMinutes" type="text" inputmode="numeric" maxlength="2" value="30" aria-label="Minutos de permanência mínima" autocomplete="off" required>
               </div>
             </div>
 
@@ -214,6 +229,15 @@
             <div class="metric-card">
               <span class="metric-icon">✓</span>
               <div><span>Encerramento</span><strong id="resultEnd">10:58</strong></div>
+            </div>
+          </div>
+
+          <div class="minimum-result-highlight">
+            <div class="minimum-result-icon" aria-hidden="true">⏱</div>
+            <div>
+              <span>Permanência mínima</span>
+              <strong id="resultMinimumStay">00:30</strong>
+              <small>Liberação a partir de <b id="resultMinimumExit">10:38</b></small>
             </div>
           </div>
 
@@ -262,14 +286,14 @@
         <div class="ai-spinner" aria-hidden="true"></div>
         <span class="ai-chip">LENDO FOTO</span>
         <h3>Lendo o cartão da prova...</h3>
-        <p>O OCR está procurando o horário de início, a duração e a permanência mínima.</p>
+        <p>O OCR está procurando o horário de início, a duração da prova e a permanência mínima. O término preenchido no cartão será ignorado.</p>
       </div>
 
       <div id="aiConfirmState" class="ai-state hidden">
         <div class="ai-modal-header">
           <span class="ai-chip">DADOS IDENTIFICADOS</span>
           <h3 id="aiModalTitle">Confira antes de calcular</h3>
-          <p>Corrija qualquer campo que não esteja igual ao cartão.</p>
+          <p>Confira início, duração e permanência mínima. O valor escrito em “Término” no cartão não interfere no resultado.</p>
         </div>
 
         <div class="ai-preview-wrap">
@@ -287,9 +311,18 @@
           </label>
         </div>
 
-        <div class="ai-extra-grid">
-          <div><span>Término lido no cartão</span><strong id="aiCardEnd">—</strong></div>
-          <div><span>Permanência mínima</span><strong id="aiMinimumStay">—</strong></div>
+        <div class="ai-minimum-highlight">
+          <div class="ai-minimum-title">
+            <span class="ai-minimum-icon" aria-hidden="true">⏱</span>
+            <div>
+              <span>Permanência mínima</span>
+              <small>Confira este tempo antes de confirmar</small>
+            </div>
+          </div>
+          <input id="aiMinimumStay" type="text" inputmode="numeric" placeholder="00:30" maxlength="5" aria-label="Permanência mínima">
+        </div>
+
+        <div class="ai-extra-grid ai-extra-grid-single">
           <div><span>Qualidade da identificação</span><strong id="aiConfidence">—</strong></div>
         </div>
 
@@ -320,11 +353,43 @@
     </section>
   </div>
 
+  <div class="result-modal" id="resultModal" aria-hidden="true">
+    <div class="result-modal-backdrop" id="resultModalBackdrop"></div>
+    <section class="result-modal-card" role="dialog" aria-modal="true" aria-labelledby="resultModalTitle">
+      <button class="result-modal-close" id="resultModalClose" type="button" aria-label="Fechar resultado">×</button>
+      <span class="result-modal-chip">CÁLCULO CONCLUÍDO</span>
+      <h3 id="resultModalTitle">Horário de encerramento</h3>
+      <div class="result-modal-time" id="modalEndTime">10:58</div>
+      <span id="modalDayIndicator" class="result-modal-day hidden">dia seguinte</span>
+
+      <div class="result-modal-grid">
+        <div><span>Início</span><strong id="modalStartTime">10:08</strong></div>
+        <div><span>Duração da prova</span><strong id="modalDuration">00:50</strong></div>
+      </div>
+
+      <div class="result-modal-minimum">
+        <div class="result-modal-minimum-icon" aria-hidden="true">⏱</div>
+        <div>
+          <span>Permanência mínima</span>
+          <strong id="modalMinimumStay">00:30</strong>
+          <small>Liberação mínima a partir de <b id="modalMinimumExit">10:38</b></small>
+        </div>
+      </div>
+
+      <p class="result-modal-note">O encerramento é calculado exclusivamente por <strong>horário de início + duração da prova</strong>. O campo “Término” preenchido no cartão é ignorado.</p>
+
+      <div class="result-modal-actions">
+        <button class="btn btn-soft" id="resultModalCopy" type="button">▣ Copiar resumo</button>
+        <button class="btn btn-primary" id="resultModalOk" type="button">✓ Entendido</button>
+      </div>
+    </section>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite">
     <span id="toastText">Resumo copiado!</span>
   </div>
 
   <script src="config.js?v=1"></script>
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

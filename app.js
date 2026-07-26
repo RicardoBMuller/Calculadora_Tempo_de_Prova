@@ -14,6 +14,8 @@
     startTime: document.getElementById("startTime"),
     durationHours: document.getElementById("durationHours"),
     durationMinutes: document.getElementById("durationMinutes"),
+    minimumHours: document.getElementById("minimumHours"),
+    minimumMinutes: document.getElementById("minimumMinutes"),
     validation: document.getElementById("validationMessage"),
     quickButtons: [...document.querySelectorAll(".quick-times button")],
     reset: document.getElementById("resetBtn"),
@@ -22,6 +24,8 @@
     resultStart: document.getElementById("resultStart"),
     resultEnd: document.getElementById("resultEnd"),
     durationValue: document.getElementById("durationValue"),
+    resultMinimumStay: document.getElementById("resultMinimumStay"),
+    resultMinimumExit: document.getElementById("resultMinimumExit"),
     dayIndicator: document.getElementById("dayIndicator"),
     statusPill: document.getElementById("statusPill"),
     timelineCaption: document.getElementById("timelineCaption"),
@@ -48,7 +52,6 @@
     aiPhotoPreview: document.getElementById("aiPhotoPreview"),
     aiStartTime: document.getElementById("aiStartTime"),
     aiDuration: document.getElementById("aiDuration"),
-    aiCardEnd: document.getElementById("aiCardEnd"),
     aiMinimumStay: document.getElementById("aiMinimumStay"),
     aiConfidence: document.getElementById("aiConfidence"),
     aiObservation: document.getElementById("aiObservation"),
@@ -58,7 +61,19 @@
     aiErrorRetry: document.getElementById("aiErrorRetryBtn"),
     aiErrorMessage: document.getElementById("aiErrorMessage"),
     ocrRawText: document.getElementById("ocrRawText"),
-    ocrRawDetails: document.getElementById("ocrRawDetails")
+    ocrRawDetails: document.getElementById("ocrRawDetails"),
+
+    resultModal: document.getElementById("resultModal"),
+    resultModalBackdrop: document.getElementById("resultModalBackdrop"),
+    resultModalClose: document.getElementById("resultModalClose"),
+    resultModalOk: document.getElementById("resultModalOk"),
+    resultModalCopy: document.getElementById("resultModalCopy"),
+    modalEndTime: document.getElementById("modalEndTime"),
+    modalDayIndicator: document.getElementById("modalDayIndicator"),
+    modalStartTime: document.getElementById("modalStartTime"),
+    modalDuration: document.getElementById("modalDuration"),
+    modalMinimumStay: document.getElementById("modalMinimumStay"),
+    modalMinimumExit: document.getElementById("modalMinimumExit")
   };
 
   let lastResult = null;
@@ -157,9 +172,39 @@
     el.durationMinutes.value = String(total % 60).padStart(2, "0");
   }
 
+  function normalizeMinimumFields() {
+    const hoursRaw = el.minimumHours.value.trim();
+    const minutesRaw = el.minimumMinutes.value.trim();
+
+    el.minimumHours.value = String(Math.min(Number(hoursRaw) || 0, 12)).padStart(2, "0");
+    el.minimumMinutes.value = String(Math.min(Number(minutesRaw) || 0, 59)).padStart(2, "0");
+  }
+
+  function getMinimumStayMinutes() {
+    const hoursText = el.minimumHours.value.trim();
+    const minutesText = el.minimumMinutes.value.trim();
+
+    if (!/^\d{1,2}$/.test(hoursText) || !/^\d{1,2}$/.test(minutesText)) return null;
+
+    const hours = Number(hoursText);
+    const minutes = Number(minutesText);
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes) || minutes > 59) return null;
+
+    const total = (hours * 60) + minutes;
+    if (total < 1 || total > 720) return null;
+    return total;
+  }
+
+  function setMinimumStayFields(totalMinutes) {
+    const total = Number(totalMinutes);
+    el.minimumHours.value = String(Math.floor(total / 60)).padStart(2, "0");
+    el.minimumMinutes.value = String(total % 60).padStart(2, "0");
+  }
+
   function validate() {
     const start = parseTime(el.startTime.value);
     const duration = getDurationMinutes();
+    const minimumStay = getMinimumStayMinutes();
 
     if (start === null) {
       return { ok: false, message: "Informe um horário de início válido." };
@@ -169,15 +214,23 @@
       return { ok: false, message: "Informe uma duração válida entre 00:01 e 12:00." };
     }
 
-    return { ok: true, start, duration };
+    if (minimumStay === null) {
+      return { ok: false, message: "Informe uma permanência mínima válida entre 00:01 e 12:00." };
+    }
+
+    return { ok: true, start, duration, minimumStay };
   }
 
-  function buildResult({ start, duration }) {
+  function buildResult({ start, duration, minimumStay }) {
     const endAbsolute = start + duration;
+    const minimumExitAbsolute = start + minimumStay;
     const startClock = formatClock(start);
     const endClock = formatClock(endAbsolute);
+    const minimumExitClock = formatClock(minimumExitAbsolute);
     const durationClock = formatDurationClock(duration);
+    const minimumStayClock = formatDurationClock(minimumStay);
     const crossesDay = endAbsolute >= 1440;
+    const minimumCrossesDay = minimumExitAbsolute >= 1440;
 
     return {
       start: startClock,
@@ -185,8 +238,12 @@
       duration,
       durationClock,
       durationText: formatDurationText(duration),
+      minimumStay,
+      minimumStayClock,
+      minimumExit: minimumExitClock,
+      minimumCrossesDay,
       crossesDay,
-      summary: `A prova começa às ${startClock} e possui duração de ${durationClock}. O horário de encerramento é ${endClock}${crossesDay ? " do dia seguinte" : ""}.`
+      summary: `A prova começa às ${startClock}, possui duração de ${durationClock} e termina às ${endClock}${crossesDay ? " do dia seguinte" : ""}. A permanência mínima é de ${minimumStayClock}, permitindo liberação a partir de ${minimumExitClock}${minimumCrossesDay ? " do dia seguinte" : ""}.`
     };
   }
 
@@ -198,6 +255,8 @@
     el.resultStart.textContent = result.start;
     el.resultEnd.textContent = result.end;
     el.durationValue.textContent = result.durationClock;
+    el.resultMinimumStay.textContent = result.minimumStayClock;
+    el.resultMinimumExit.textContent = result.minimumExit;
     el.statusPill.textContent = result.durationClock;
     el.timelineStart.textContent = result.start;
     el.timelineEnd.textContent = result.end;
@@ -277,6 +336,7 @@
     const entry = {
       start: result.start,
       duration: result.duration,
+      minimumStay: result.minimumStay,
       end: result.end,
       savedAt: Date.now()
     };
@@ -285,6 +345,7 @@
     const duplicate = history.findIndex((item) =>
       item.start === entry.start &&
       Number(item.duration) === entry.duration &&
+      Number(item.minimumStay || 30) === entry.minimumStay &&
       item.end === entry.end
     );
 
@@ -312,12 +373,13 @@
       button.innerHTML = `
         <span>${item.start} → ${item.end}</span>
         <strong>${item.end}</strong>
-        <small>${durationClock} de duração</small>
+        <small>${durationClock} • mín. ${formatDurationClock(Number(item.minimumStay || 30))}</small>
       `;
 
       button.addEventListener("click", () => {
         el.startTime.value = item.start;
         setDurationFields(Number(item.duration));
+        setMinimumStayFields(Number(item.minimumStay || 30));
         calculate({ animate: true, save: false });
 
         if (window.innerWidth < 781) {
@@ -332,7 +394,14 @@
   async function copySummary() {
     if (!lastResult) return;
 
-    const text = `Cálculo de duração da prova\nHorário de início: ${lastResult.start}\nDuração: ${lastResult.durationClock} (${lastResult.durationText})\nHorário de encerramento: ${lastResult.end}${lastResult.crossesDay ? " — dia seguinte" : ""}\n\n${lastResult.summary}`;
+    const text = `Cálculo de duração da prova
+Horário de início: ${lastResult.start}
+Duração: ${lastResult.durationClock} (${lastResult.durationText})
+Horário de encerramento: ${lastResult.end}${lastResult.crossesDay ? " — dia seguinte" : ""}
+Permanência mínima: ${lastResult.minimumStayClock}
+Liberação mínima a partir de: ${lastResult.minimumExit}${lastResult.minimumCrossesDay ? " — dia seguinte" : ""}
+
+${lastResult.summary}`;
 
     try {
       await navigator.clipboard.writeText(text);
@@ -690,17 +759,23 @@
     return "";
   }
 
-  function findValueNearLabel(lines, labelRegex, { duration = false, lookAhead = 3 } = {}) {
+  function isDifferentFieldLabel(line, expectedLabelRegex) {
+    const searchable = stripDiacritics(line).toLowerCase();
+    const hasKnownLabel = /duracao|inicio|termino|fim|encerramento|permanencia|minima/.test(searchable);
+    return hasKnownLabel && !expectedLabelRegex.test(searchable);
+  }
+
+  function findValueNearLabel(lines, labelRegex, { duration = false, lookAhead = 2 } = {}) {
     for (let i = 0; i < lines.length; i += 1) {
       const searchable = stripDiacritics(lines[i]).toLowerCase();
       if (!labelRegex.test(searchable)) continue;
 
-      const candidates = [lines[i]];
-      for (let offset = 1; offset <= lookAhead && i + offset < lines.length; offset += 1) {
-        candidates.push(lines[i + offset]);
-      }
+      const direct = findTimeToken(lines[i], { duration });
+      if (direct) return { value: direct, anchored: true, lineIndex: i };
 
-      for (const candidate of candidates) {
+      for (let offset = 1; offset <= lookAhead && i + offset < lines.length; offset += 1) {
+        const candidate = lines[i + offset];
+        if (isDifferentFieldLabel(candidate, labelRegex)) break;
         const value = findTimeToken(candidate, { duration });
         if (value) return { value, anchored: true, lineIndex: i };
       }
@@ -711,32 +786,21 @@
 
   function findStartFallback(lines) {
     const startIndex = lines.findIndex((line) => /\binicio\b/i.test(stripDiacritics(line)));
-    const endIndex = lines.findIndex((line, index) => index > startIndex && /\btermino\b/i.test(stripDiacritics(line)));
+    if (startIndex < 0) return "";
 
-    if (startIndex >= 0) {
-      const limit = endIndex > startIndex ? Math.min(endIndex + 1, startIndex + 5) : Math.min(lines.length, startIndex + 5);
-      for (let i = startIndex; i < limit; i += 1) {
-        const value = findTimeToken(lines[i], { duration: false });
-        if (value) return value;
-      }
+    for (let offset = 0; offset <= 2 && startIndex + offset < lines.length; offset += 1) {
+      const line = lines[startIndex + offset];
+      const searchable = stripDiacritics(line).toLowerCase();
+
+      // Nunca usa conteúdo dos campos Término, Duração ou Permanência mínima
+      // para inferir o horário de início.
+      if (offset > 0 && /termino|fim|encerramento|duracao|permanencia|minima/.test(searchable)) break;
+
+      const value = findTimeToken(line, { duration: false });
+      if (value) return value;
     }
 
     return "";
-  }
-
-  function minutesBetweenClockValues(a, b) {
-    const aMin = parseTime(a);
-    const bMin = parseTime(b);
-    if (aMin === null || bMin === null) return null;
-    let diff = Math.abs(aMin - bMin);
-    if (diff > 720) diff = 1440 - diff;
-    return diff;
-  }
-
-  function subtractDurationFromClock(clock, durationMinutes) {
-    const end = parseTime(clock);
-    if (end === null || !Number.isFinite(durationMinutes)) return "";
-    return formatClock(end - durationMinutes);
   }
 
   function parseOcrFields(rawText) {
@@ -757,12 +821,6 @@
       { duration: false, lookAhead: 1 }
     );
 
-    const endResult = findValueNearLabel(
-      lines,
-      /\btermino\b|\bfim\b|encerramento/,
-      { duration: false, lookAhead: 1 }
-    );
-
     const minimumResult = findValueNearLabel(
       lines,
       /permanencia(?:\s+minima)?|minima/,
@@ -771,8 +829,7 @@
 
     let inicio = startResult.value || findStartFallback(lines);
     let duracao = durationResult.value;
-    const terminoCartao = normalizeAiClock(endResult.value);
-    const permanenciaMinima = minimumResult.value;
+    let permanenciaMinima = minimumResult.value;
 
     if (!duracao) {
       for (const line of lines) {
@@ -788,44 +845,21 @@
 
     inicio = normalizeAiClock(inicio);
     const durationMinutes = durationStringToMinutes(duracao);
+    const minimumMinutes = durationStringToMinutes(permanenciaMinima);
 
-    // Validação cruzada muito útil para este cartão da FCC:
-    // quando OCR reconhece "Término" e "Duração", calculamos qual DEVERIA ser o início.
-    // Ex.: Término 10:02 - Duração 00:50 = Início 09:12.
-    let inicioDerivado = "";
-    let inicioFoiCorrigido = false;
-    if (terminoCartao && durationMinutes !== null) {
-      inicioDerivado = subtractDurationFromClock(terminoCartao, durationMinutes);
-      if (!inicio) {
-        inicio = inicioDerivado;
-        inicioFoiCorrigido = true;
-      } else {
-        const difference = minutesBetweenClockValues(inicio, inicioDerivado);
-        if (difference !== null && difference > 1 && endResult.anchored && durationResult.anchored) {
-          inicio = inicioDerivado;
-          inicioFoiCorrigido = true;
-        }
-      }
-    }
+    if (durationMinutes !== null) duracao = formatDurationClock(durationMinutes);
+    if (minimumMinutes !== null) permanenciaMinima = formatDurationClock(minimumMinutes);
 
-    const foundCount = [inicio, duracao].filter(Boolean).length;
+    const foundMain = [inicio, duracao].filter(Boolean).length;
     let confianca = "baixa";
-    if (foundCount === 2 && startResult.anchored && durationResult.anchored) confianca = "alta";
-    else if (foundCount === 2) confianca = "media";
+    if (foundMain === 2 && startResult.anchored && durationResult.anchored) confianca = "alta";
+    else if (foundMain === 2) confianca = "media";
 
-    // Se início + duração fecham exatamente com o término do cartão, aumentamos a confiança.
-    let validacaoTermino = false;
-    if (inicio && durationMinutes !== null && terminoCartao) {
-      const calcEnd = formatClock(parseTime(inicio) + durationMinutes);
-      validacaoTermino = calcEnd === terminoCartao;
-      if (validacaoTermino) confianca = "alta";
-    }
-
-    let observacao = "Confira os valores reconhecidos antes de calcular.";
-    if (inicioFoiCorrigido && terminoCartao && duracao) {
-      observacao = `O horário de início foi validado pelo término do cartão: ${terminoCartao} − ${duracao} = ${inicio}.`;
-    } else if (validacaoTermino) {
-      observacao = `Leitura validada: ${inicio} + ${duracao} = ${terminoCartao}, igual ao término preenchido no cartão.`;
+    let observacao = "O encerramento será calculado somente a partir do horário de início + duração da prova.";
+    if (inicio && duracao && permanenciaMinima) {
+      observacao = `Leitura principal concluída. Início ${inicio}, duração ${duracao} e permanência mínima ${permanenciaMinima}. O campo “Término” do cartão foi ignorado.`;
+    } else if (inicio && duracao) {
+      observacao = "Início e duração foram encontrados. Confira a permanência mínima; o campo “Término” do cartão não é utilizado.";
     } else if (!inicio && duracao) {
       observacao = "A duração foi encontrada, mas o horário de início manuscrito não ficou legível. Preencha-o manualmente.";
     } else if (inicio && !duracao) {
@@ -837,8 +871,7 @@
     return {
       inicio,
       duracao,
-      termino_cartao: terminoCartao || "Não identificado",
-      permanencia_minima: permanenciaMinima || "Não identificada",
+      permanencia_minima: permanenciaMinima || "",
       confianca,
       observacao,
       texto_extraido: rawText
@@ -851,8 +884,8 @@
 
     el.aiStartTime.value = start;
     el.aiDuration.value = durationMinutes ? formatDurationClock(durationMinutes) : "";
-    if (el.aiCardEnd) el.aiCardEnd.textContent = data.termino_cartao || "Não identificado";
-    el.aiMinimumStay.textContent = data.permanencia_minima || "Não identificada";
+    const minimumMinutes = durationStringToMinutes(data.permanencia_minima);
+    el.aiMinimumStay.value = minimumMinutes !== null ? formatDurationClock(minimumMinutes) : "";
     el.aiConfidence.textContent = confidenceLabel(data.confianca);
     el.aiObservation.textContent = data.observacao || "Confira os dados reconhecidos antes de calcular.";
     if (el.ocrRawText) el.ocrRawText.textContent = data.texto_extraido || "";
@@ -892,6 +925,7 @@
   function confirmAiData() {
     const start = normalizeAiClock(el.aiStartTime.value);
     const durationMinutes = durationStringToMinutes(el.aiDuration.value);
+    const minimumStayMinutes = durationStringToMinutes(el.aiMinimumStay.value);
 
     if (!start) {
       el.aiValidation.textContent = "Confira e informe um horário de início válido.";
@@ -905,17 +939,22 @@
       return;
     }
 
+    if (minimumStayMinutes === null) {
+      el.aiValidation.textContent = "Confira e informe a permanência mínima, por exemplo 00:30.";
+      el.aiMinimumStay.focus();
+      return;
+    }
+
     el.aiValidation.textContent = "";
     el.startTime.value = start;
     setDurationFields(durationMinutes);
+    setMinimumStayFields(minimumStayMinutes);
     const result = calculate({ animate: true, save: true });
     closeAiModal();
 
     if (result) {
       showToast("Dados da foto aplicados com sucesso.");
-      window.setTimeout(() => {
-        el.resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 120);
+      window.setTimeout(() => openResultModal(result), 180);
     }
   }
 
@@ -947,11 +986,54 @@
       el.aiDuration.value = value;
     });
 
+    el.aiMinimumStay.addEventListener("input", () => {
+      let value = el.aiMinimumStay.value.replace(/[^0-9:]/g, "").slice(0, 5);
+      if (/^\d{2}$/.test(value) && !value.includes(":")) value += ":";
+      el.aiMinimumStay.value = value;
+    });
+
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && el.aiModal.classList.contains("open")) {
         closeAiModal();
+      } else if (event.key === "Escape" && el.resultModal.classList.contains("open")) {
+        closeResultModal();
       }
     });
+  }
+
+  // =========================================================
+  // MODAL DE RESULTADO
+  // =========================================================
+
+  function fillResultModal(result) {
+    if (!result) return;
+    el.modalEndTime.textContent = result.end;
+    el.modalStartTime.textContent = result.start;
+    el.modalDuration.textContent = result.durationClock;
+    el.modalMinimumStay.textContent = result.minimumStayClock;
+    el.modalMinimumExit.textContent = result.minimumExit;
+    el.modalDayIndicator.classList.toggle("hidden", !result.crossesDay);
+  }
+
+  function openResultModal(result = lastResult) {
+    if (!result) return;
+    fillResultModal(result);
+    el.resultModal.classList.add("open");
+    el.resultModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+  }
+
+  function closeResultModal() {
+    el.resultModal.classList.remove("open");
+    el.resultModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+  }
+
+  function setupResultModal() {
+    el.resultModalClose.addEventListener("click", closeResultModal);
+    el.resultModalOk.addEventListener("click", closeResultModal);
+    el.resultModalBackdrop.addEventListener("click", closeResultModal);
+    el.resultModalCopy.addEventListener("click", copySummary);
   }
 
   // =========================================================
@@ -961,12 +1043,11 @@
   el.form.addEventListener("submit", (event) => {
     event.preventDefault();
     normalizeDurationFields();
+    normalizeMinimumFields();
     const result = calculate({ animate: true, save: true });
 
-    if (result && window.innerWidth < 781) {
-      window.setTimeout(() => {
-        el.resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
+    if (result) {
+      openResultModal(result);
     }
   });
 
@@ -986,8 +1067,25 @@
     });
   });
 
+  [el.minimumHours, el.minimumMinutes].forEach((input) => {
+    input.addEventListener("input", () => {
+      sanitizeDurationPart(input);
+      scheduleAutoCalculate();
+    });
+
+    input.addEventListener("blur", () => {
+      if (input.value.trim() === "") input.value = "00";
+      else input.value = String(Number(input.value) || 0).padStart(2, "0");
+      scheduleAutoCalculate();
+    });
+  });
+
   el.durationHours.addEventListener("input", () => {
     if (el.durationHours.value.length === 2) el.durationMinutes.focus();
+  });
+
+  el.minimumHours.addEventListener("input", () => {
+    if (el.minimumHours.value.length === 2) el.minimumMinutes.focus();
   });
 
   el.quickButtons.forEach((button) => {
@@ -1000,6 +1098,7 @@
   el.reset.addEventListener("click", () => {
     el.startTime.value = "10:08";
     setDurationFields(50);
+    setMinimumStayFields(30);
     calculate({ animate: true, save: false });
     el.startTime.focus();
   });
@@ -1015,7 +1114,9 @@
   setupLogos();
   initIntro();
   setupAiPhotoReader();
+  setupResultModal();
   setDurationFields(50);
+  setMinimumStayFields(30);
   renderHistory();
   calculate({ animate: false, save: false });
 })();
