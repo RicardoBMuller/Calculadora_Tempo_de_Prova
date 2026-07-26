@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17171f">
+  <meta name="description" content="Calculadora de duração de provas com ajuste automático por atraso ou adiantamento no início.">
+  <title>FCC • Calculadora de Provas</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <div class="grid-noise" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-card surface-fade">
+        <div class="brand-mark" aria-hidden="true">FCC</div>
+        <div class="brand-copy">
+          <h1>Tempo de Prova</h1>
+          <p>Calculadora de duração</p>
+        </div>
+      </div>
+
+      <section class="panel surface-fade delay-1">
+        <div class="panel-header">
+          <span>Como funciona</span>
+          <span class="mini-icon" aria-hidden="true">↗</span>
+        </div>
+        <p class="panel-text">
+          Informe o horário previsto, o horário em que a prova realmente começou e a duração definida.
+          O encerramento é recalculado sem alterar o tempo disponível da prova.
+        </p>
+      </section>
+
+      <section class="panel example-panel surface-fade delay-2">
+        <div class="panel-header">
+          <span>Exemplo</span>
+          <span class="status-dot"></span>
+        </div>
+        <div class="example-row"><span>Previsto</span><strong>10:00</strong></div>
+        <div class="example-row"><span>Início real</span><strong>10:08</strong></div>
+        <div class="example-row"><span>Duração</span><strong>50 min</strong></div>
+        <div class="example-result">
+          <span>Novo encerramento</span>
+          <strong>10:58</strong>
+        </div>
+      </section>
+
+      <section class="panel history-panel surface-fade delay-3">
+        <div class="panel-header">
+          <span>Histórico recente</span>
+          <button class="icon-button" id="clearHistoryBtn" type="button" title="Limpar histórico" aria-label="Limpar histórico">⌫</button>
+        </div>
+        <div id="historyList" class="history-list">
+          <p class="history-empty">Os últimos cálculos aparecerão aqui.</p>
+        </div>
+      </section>
+
+      <p class="sidebar-footer">FCC • Utilitário de apoio operacional</p>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar surface-fade">
+        <div>
+          <p class="eyebrow">CONTROLE DE TEMPO</p>
+          <h2>Calculadora de duração de provas</h2>
+          <p class="topbar-subtitle">Compense atrasos no início e preserve exatamente o tempo previsto para a prova.</p>
+        </div>
+        <div class="live-badge"><span></span> cálculo instantâneo</div>
+      </header>
+
+      <section class="workspace">
+        <article class="calculator-card surface-fade delay-1">
+          <div class="section-heading">
+            <div>
+              <span class="step-label">ETAPA 01</span>
+              <h3>Informe os horários</h3>
+            </div>
+            <div class="clock-orbit" aria-hidden="true">
+              <span class="clock-hand hand-hour"></span>
+              <span class="clock-hand hand-minute"></span>
+              <span class="clock-center"></span>
+            </div>
+          </div>
+
+          <form id="examForm" novalidate>
+            <div class="input-grid">
+              <label class="field-card" for="scheduledStart">
+                <span class="field-icon">◷</span>
+                <span class="field-copy">
+                  <span class="field-label">Início previsto</span>
+                  <span class="field-help">Horário oficial da prova</span>
+                </span>
+                <input id="scheduledStart" class="time-input" type="time" value="10:00" required>
+              </label>
+
+              <label class="field-card" for="actualStart">
+                <span class="field-icon accent-icon">▶</span>
+                <span class="field-copy">
+                  <span class="field-label">Início real</span>
+                  <span class="field-help">Horário em que ela começou</span>
+                </span>
+                <input id="actualStart" class="time-input" type="time" value="10:08" required>
+              </label>
+            </div>
+
+            <div class="duration-block">
+              <div class="duration-header">
+                <div>
+                  <span class="field-label">Duração da prova</span>
+                  <span class="field-help">Tempo total que deve ser preservado</span>
+                </div>
+                <div class="duration-input-wrap">
+                  <input id="durationMinutes" type="number" min="1" max="720" step="1" value="50" inputmode="numeric" aria-label="Duração da prova em minutos" required>
+                  <span>min</span>
+                </div>
+              </div>
+
+              <div class="quick-times" aria-label="Durações rápidas">
+                <button type="button" data-minutes="30">30 min</button>
+                <button type="button" data-minutes="45">45 min</button>
+                <button type="button" data-minutes="50" class="active">50 min</button>
+                <button type="button" data-minutes="60">1 h</button>
+                <button type="button" data-minutes="90">1h30</button>
+                <button type="button" data-minutes="120">2 h</button>
+              </div>
+            </div>
+
+            <p id="validationMessage" class="validation-message" role="alert" aria-live="polite"></p>
+
+            <div class="form-actions">
+              <button class="btn btn-soft" id="resetBtn" type="button"><span>↺</span> Limpar</button>
+              <button class="btn btn-primary" id="calculateBtn" type="submit"><span>✦</span> Calcular horário final</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="result-card surface-fade delay-2" id="resultCard" aria-live="polite">
+          <div class="section-heading result-heading">
+            <div>
+              <span class="step-label">ETAPA 02</span>
+              <h3>Resultado</h3>
+            </div>
+            <span id="statusPill" class="result-status delayed">+8 min</span>
+          </div>
+
+          <div class="result-hero">
+            <p>Novo horário de encerramento</p>
+            <div class="new-end-time" id="newEndTime">10:58</div>
+            <span id="dayIndicator" class="day-indicator hidden">dia seguinte</span>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric-card">
+              <span class="metric-icon">◎</span>
+              <div><span>Término previsto</span><strong id="scheduledEnd">10:50</strong></div>
+            </div>
+            <div class="metric-card">
+              <span class="metric-icon">↗</span>
+              <div><span id="deltaLabel">Atraso no início</span><strong id="delayValue">8 min</strong></div>
+            </div>
+            <div class="metric-card">
+              <span class="metric-icon">⌛</span>
+              <div><span>Duração preservada</span><strong id="durationValue">50 min</strong></div>
+            </div>
+          </div>
+
+          <div class="timeline-wrap">
+            <div class="timeline-topline">
+              <span>Linha do tempo</span>
+              <span id="timelineCaption">+8 minutos deslocados</span>
+            </div>
+            <div class="timeline" id="timeline">
+              <div class="timeline-track"><div class="timeline-progress" id="timelineProgress"></div></div>
+              <div class="timeline-point point-scheduled">
+                <span class="point-dot"></span>
+                <strong id="timelineScheduled">10:00</strong>
+                <small>Previsto</small>
+              </div>
+              <div class="timeline-point point-actual" id="actualPoint">
+                <span class="point-dot"></span>
+                <strong id="timelineActual">10:08</strong>
+                <small>Início real</small>
+              </div>
+              <div class="timeline-point point-end">
+                <span class="point-dot"></span>
+                <strong id="timelineEnd">10:58</strong>
+                <small>Encerramento</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="summary-box">
+            <div class="summary-icon" aria-hidden="true">✓</div>
+            <p id="summaryText">A prova prevista para 10:00 começou às 10:08, com 8 minutos de atraso. Mantendo os 50 minutos de duração, o encerramento passa de 10:50 para 10:58.</p>
+          </div>
+
+          <button class="btn btn-copy" id="copyBtn" type="button"><span>▣</span> Copiar resumo</button>
+        </article>
+      </section>
+
+      <footer class="main-footer">
+        <span>Os cálculos são feitos somente no navegador.</span>
+        <span>Sem cadastro • Sem servidor • Pronto para GitHub Pages</span>
+      </footer>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <span class="toast-check">✓</span>
+    <span id="toastText">Resumo copiado!</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
