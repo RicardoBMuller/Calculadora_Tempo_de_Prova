@@ -134,12 +134,11 @@
             <div class="ai-scan-copy">
               <span class="ai-chip">OCR • LEITURA POR FOTO</span>
               <h4 id="aiScanTitle">Fotografe o cartão da prova</h4>
-              <p>A câmera lê o horário de início manuscrito e a duração impressa usando OCR.Space. Você confirma os dados antes do cálculo.</p>
+              <p>A câmera lê o horário de início manuscrito e a duração impressa usando OCR.Space. Quando o término também for reconhecido, ele é usado para validar automaticamente o horário de início. Você confirma os dados antes do cálculo.</p>
             </div>
-            <div class="ai-scan-actions">
-              <input id="examPhotoInput" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,image/*" capture="environment">
+            <div class="ai-scan-actions camera-only">
+              <input id="examPhotoInput" class="visually-hidden" type="file" accept="image/*" capture="environment">
               <button class="btn btn-camera" id="takePhotoBtn" type="button"><span>📷</span> Fotografar cartão</button>
-              <button class="btn btn-soft ai-gallery-btn" id="choosePhotoBtn" type="button"><span>▧</span> Escolher foto</button>
             </div>
             <div class="ai-note"><span>✦</span> A foto é enviada ao OCR.Space somente para extrair o texto do cartão. Confira os dados antes de confirmar.</div>
           </section>
@@ -289,6 +288,7 @@
         </div>
 
         <div class="ai-extra-grid">
+          <div><span>Término lido no cartão</span><strong id="aiCardEnd">—</strong></div>
           <div><span>Permanência mínima</span><strong id="aiMinimumStay">—</strong></div>
           <div><span>Qualidade da identificação</span><strong id="aiConfidence">—</strong></div>
         </div>
@@ -325,6 +325,6 @@
   </div>
 
   <script src="config.js?v=1"></script>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

@@ -39,7 +39,6 @@
 
     photoInput: document.getElementById("examPhotoInput"),
     takePhoto: document.getElementById("takePhotoBtn"),
-    choosePhoto: document.getElementById("choosePhotoBtn"),
     aiModal: document.getElementById("aiModal"),
     aiModalBackdrop: document.getElementById("aiModalBackdrop"),
     aiModalClose: document.getElementById("aiModalClose"),
@@ -49,6 +48,7 @@
     aiPhotoPreview: document.getElementById("aiPhotoPreview"),
     aiStartTime: document.getElementById("aiStartTime"),
     aiDuration: document.getElementById("aiDuration"),
+    aiCardEnd: document.getElementById("aiCardEnd"),
     aiMinimumStay: document.getElementById("aiMinimumStay"),
     aiConfidence: document.getElementById("aiConfidence"),
     aiObservation: document.getElementById("aiObservation"),
@@ -65,7 +65,6 @@
   let toastTimer = null;
   let autoTimer = null;
   let lastAiImageDataUrl = "";
-  let currentPhotoMode = "camera";
 
   function enableLogoFallback(img) {
     if (!img) return;
@@ -390,16 +389,9 @@
     el.aiErrorState.classList.toggle("hidden", state !== "error");
   }
 
-  function requestPhoto(mode) {
-    currentPhotoMode = mode;
+  function requestPhoto() {
     el.photoInput.value = "";
-
-    if (mode === "camera") {
-      el.photoInput.setAttribute("capture", "environment");
-    } else {
-      el.photoInput.removeAttribute("capture");
-    }
-
+    el.photoInput.setAttribute("capture", "environment");
     el.photoInput.click();
   }
 
@@ -651,20 +643,28 @@
       .trim();
   }
 
-  function normalizeNumericOcr(value) {
+  function normalizeOcrDigits(value) {
     return String(value || "")
       .replace(/[Oo]/g, "0")
       .replace(/[Il|]/g, "1");
   }
 
   function findTimeToken(text, { duration = false } = {}) {
-    const normalized = normalizeNumericOcr(text);
-    const pattern = /(?:^|[^0-9])([0-9]{1,2})\s*(?:h|H|:|\.|;)\s*([0-9]{2})(?![0-9])/g;
+    const source = String(text || "");
+
+    // IMPORTANTE: não converte a linha inteira (ex.: "Início" -> "1níci0").
+    // Só aceitamos O/I/l como possíveis dígitos DENTRO do token do horário.
+    // Isso evita o erro que transformava "Início: 09 : 12" em "00:09".
+    const pattern = /(?:^|[^A-Za-zÀ-ÿ0-9])([0-9OoIl|]{1,2})\s*(?:h|H|:|\.|;)\s*([0-9OoIl|]{1,2})(?![A-Za-zÀ-ÿ0-9])/g;
     let match;
 
-    while ((match = pattern.exec(normalized)) !== null) {
-      const hours = Number(match[1]);
-      const minutes = Number(match[2]);
+    while ((match = pattern.exec(source)) !== null) {
+      const hourToken = normalizeOcrDigits(match[1]);
+      const minuteToken = normalizeOcrDigits(match[2]);
+      if (!/^\d{1,2}$/.test(hourToken) || !/^\d{1,2}$/.test(minuteToken)) continue;
+
+      const hours = Number(hourToken);
+      const minutes = Number(minuteToken);
       if (minutes > 59) continue;
 
       if (duration) {
@@ -676,10 +676,14 @@
     }
 
     if (duration) {
-      const hourOnly = normalized.match(/(?:^|[^0-9])([0-9]{1,2})\s*h(?:[^0-9]|$)/i);
+      const hourOnlyPattern = /(?:^|[^A-Za-zÀ-ÿ0-9])([0-9OoIl|]{1,2})\s*h(?:[^A-Za-zÀ-ÿ0-9]|$)/i;
+      const hourOnly = source.match(hourOnlyPattern);
       if (hourOnly) {
-        const total = Number(hourOnly[1]) * 60;
-        if (total >= 1 && total <= 720) return formatDurationClock(total);
+        const hours = Number(normalizeOcrDigits(hourOnly[1]));
+        const total = hours * 60;
+        if (Number.isFinite(total) && total >= 1 && total <= 720) {
+          return formatDurationClock(total);
+        }
       }
     }
 
@@ -720,6 +724,21 @@
     return "";
   }
 
+  function minutesBetweenClockValues(a, b) {
+    const aMin = parseTime(a);
+    const bMin = parseTime(b);
+    if (aMin === null || bMin === null) return null;
+    let diff = Math.abs(aMin - bMin);
+    if (diff > 720) diff = 1440 - diff;
+    return diff;
+  }
+
+  function subtractDurationFromClock(clock, durationMinutes) {
+    const end = parseTime(clock);
+    if (end === null || !Number.isFinite(durationMinutes)) return "";
+    return formatClock(end - durationMinutes);
+  }
+
   function parseOcrFields(rawText) {
     const lines = String(rawText || "")
       .split(/\r?\n/)
@@ -738,6 +757,12 @@
       { duration: false, lookAhead: 1 }
     );
 
+    const endResult = findValueNearLabel(
+      lines,
+      /\btermino\b|\bfim\b|encerramento/,
+      { duration: false, lookAhead: 1 }
+    );
+
     const minimumResult = findValueNearLabel(
       lines,
       /permanencia(?:\s+minima)?|minima/,
@@ -746,10 +771,9 @@
 
     let inicio = startResult.value || findStartFallback(lines);
     let duracao = durationResult.value;
+    const terminoCartao = normalizeAiClock(endResult.value);
     const permanenciaMinima = minimumResult.value;
 
-    // Fallback conservador: se a duração não veio próxima do rótulo,
-    // procura somente linhas que mencionem explicitamente prova/duração.
     if (!duracao) {
       for (const line of lines) {
         const searchable = stripDiacritics(line).toLowerCase();
@@ -762,23 +786,58 @@
       }
     }
 
-    // Nunca inventa horário: se não foi encontrado um valor plausível,
-    // o campo fica vazio para o usuário preencher na confirmação.
     inicio = normalizeAiClock(inicio);
+    const durationMinutes = durationStringToMinutes(duracao);
+
+    // Validação cruzada muito útil para este cartão da FCC:
+    // quando OCR reconhece "Término" e "Duração", calculamos qual DEVERIA ser o início.
+    // Ex.: Término 10:02 - Duração 00:50 = Início 09:12.
+    let inicioDerivado = "";
+    let inicioFoiCorrigido = false;
+    if (terminoCartao && durationMinutes !== null) {
+      inicioDerivado = subtractDurationFromClock(terminoCartao, durationMinutes);
+      if (!inicio) {
+        inicio = inicioDerivado;
+        inicioFoiCorrigido = true;
+      } else {
+        const difference = minutesBetweenClockValues(inicio, inicioDerivado);
+        if (difference !== null && difference > 1 && endResult.anchored && durationResult.anchored) {
+          inicio = inicioDerivado;
+          inicioFoiCorrigido = true;
+        }
+      }
+    }
 
     const foundCount = [inicio, duracao].filter(Boolean).length;
     let confianca = "baixa";
     if (foundCount === 2 && startResult.anchored && durationResult.anchored) confianca = "alta";
     else if (foundCount === 2) confianca = "media";
 
+    // Se início + duração fecham exatamente com o término do cartão, aumentamos a confiança.
+    let validacaoTermino = false;
+    if (inicio && durationMinutes !== null && terminoCartao) {
+      const calcEnd = formatClock(parseTime(inicio) + durationMinutes);
+      validacaoTermino = calcEnd === terminoCartao;
+      if (validacaoTermino) confianca = "alta";
+    }
+
     let observacao = "Confira os valores reconhecidos antes de calcular.";
-    if (!inicio && duracao) observacao = "A duração foi encontrada, mas o horário de início manuscrito não ficou legível. Preencha-o manualmente.";
-    else if (inicio && !duracao) observacao = "O horário de início foi encontrado, mas a duração não ficou legível. Preencha-a manualmente.";
-    else if (!inicio && !duracao) observacao = "Os campos principais não foram identificados. Tente aproximar a câmera e evitar reflexos.";
+    if (inicioFoiCorrigido && terminoCartao && duracao) {
+      observacao = `O horário de início foi validado pelo término do cartão: ${terminoCartao} − ${duracao} = ${inicio}.`;
+    } else if (validacaoTermino) {
+      observacao = `Leitura validada: ${inicio} + ${duracao} = ${terminoCartao}, igual ao término preenchido no cartão.`;
+    } else if (!inicio && duracao) {
+      observacao = "A duração foi encontrada, mas o horário de início manuscrito não ficou legível. Preencha-o manualmente.";
+    } else if (inicio && !duracao) {
+      observacao = "O horário de início foi encontrado, mas a duração não ficou legível. Preencha-a manualmente.";
+    } else if (!inicio && !duracao) {
+      observacao = "Os campos principais não foram identificados. Tente aproximar a câmera e evitar reflexos.";
+    }
 
     return {
       inicio,
       duracao,
+      termino_cartao: terminoCartao || "Não identificado",
       permanencia_minima: permanenciaMinima || "Não identificada",
       confianca,
       observacao,
@@ -792,6 +851,7 @@
 
     el.aiStartTime.value = start;
     el.aiDuration.value = durationMinutes ? formatDurationClock(durationMinutes) : "";
+    if (el.aiCardEnd) el.aiCardEnd.textContent = data.termino_cartao || "Não identificado";
     el.aiMinimumStay.textContent = data.permanencia_minima || "Não identificada";
     el.aiConfidence.textContent = confidenceLabel(data.confianca);
     el.aiObservation.textContent = data.observacao || "Confira os dados reconhecidos antes de calcular.";
@@ -860,8 +920,7 @@
   }
 
   function setupAiPhotoReader() {
-    el.takePhoto.addEventListener("click", () => requestPhoto("camera"));
-    el.choosePhoto.addEventListener("click", () => requestPhoto("gallery"));
+    el.takePhoto.addEventListener("click", requestPhoto);
 
     el.photoInput.addEventListener("change", () => {
       const file = el.photoInput.files?.[0];
@@ -874,12 +933,12 @@
 
     el.aiRetry.addEventListener("click", () => {
       closeAiModal();
-      window.setTimeout(() => requestPhoto(currentPhotoMode), 120);
+      window.setTimeout(requestPhoto, 120);
     });
 
     el.aiErrorRetry.addEventListener("click", () => {
       closeAiModal();
-      window.setTimeout(() => requestPhoto(currentPhotoMode), 120);
+      window.setTimeout(requestPhoto, 120);
     });
 
     el.aiDuration.addEventListener("input", () => {

@@ -1752,3 +1752,23 @@ body.intro-finished .app-shell {
   color: rgba(255,255,255,.76);
   font: 500 .76rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+
+/* v9: somente captura pela câmera; um único botão ocupa a largura disponível */
+.ai-scan-actions.camera-only .btn-camera {
+  min-width: 220px;
+}
+
+.ai-extra-grid > div:last-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 780px) {
+  .ai-scan-actions.camera-only .btn-camera {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .ai-extra-grid > div:last-child {
+    grid-column: auto;
+  }
+}
