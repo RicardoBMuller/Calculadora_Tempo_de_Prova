@@ -6,8 +6,18 @@
   <meta name="theme-color" content="#17171f">
   <meta name="description" content="Calculadora de duração de provas com ajuste automático por atraso ou adiantamento no início.">
   <title>FCC • Calculadora de Provas</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="logo-fcc.jpg" type="image/jpeg">
+  <style>
+    /* Proteção contra imagem gigante antes do CSS externo carregar */
+    .fcc-avatar-img{display:block;object-fit:cover;border-radius:50%;}
+    .fcc-avatar-img--intro{width:112px!important;height:112px!important;max-width:112px!important;max-height:112px!important;}
+    .fcc-avatar-img--site{width:64px!important;height:64px!important;max-width:64px!important;max-height:64px!important;}
+    @media(max-width:780px){
+      .fcc-avatar-img--intro{width:96px!important;height:96px!important;max-width:96px!important;max-height:96px!important;}
+      .fcc-avatar-img--site{width:54px!important;height:54px!important;max-width:54px!important;max-height:54px!important;}
+    }
+  </style>
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body class="intro-playing">
   <div class="intro-screen" id="introScreen" aria-hidden="true">
@@ -16,11 +26,15 @@
     <div class="intro-card">
       <div class="intro-orbit intro-orbit--one"></div>
       <div class="intro-orbit intro-orbit--two"></div>
-      <div class="intro-logo-wrap">
-        <img class="fcc-logo intro-logo" src="logo-fcc.jpg" alt="Fundação Carlos Chagas">
-        <div class="logo-fallback" hidden>
-          <strong>FCC</strong>
-          <span>Fundação Carlos Chagas</span>
+      <div class="fcc-avatar-shell fcc-avatar-shell--intro" aria-label="Fundação Carlos Chagas">
+        <span class="fcc-orbit fcc-orbit--outer" aria-hidden="true"></span>
+        <span class="fcc-orbit fcc-orbit--inner" aria-hidden="true"></span>
+        <div class="fcc-avatar fcc-avatar--intro">
+          <img class="fcc-logo fcc-avatar-img fcc-avatar-img--intro" src="logo-fcc.jpg" width="112" height="112" alt="Fundação Carlos Chagas">
+          <div class="logo-fallback" hidden>
+            <strong>FCC</strong>
+            <span>Fundação Carlos Chagas</span>
+          </div>
         </div>
       </div>
       <div class="intro-copy">
@@ -41,11 +55,15 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand-card surface-fade">
-        <div class="brand-logo-holder">
-          <img class="fcc-logo brand-logo" src="logo-fcc.jpg" alt="Fundação Carlos Chagas">
-          <div class="logo-fallback brand-fallback" hidden>
-            <strong>FCC</strong>
-            <span>Fundação Carlos Chagas</span>
+        <div class="fcc-avatar-shell fcc-avatar-shell--site" aria-label="Fundação Carlos Chagas">
+          <span class="fcc-orbit fcc-orbit--outer" aria-hidden="true"></span>
+          <span class="fcc-orbit fcc-orbit--inner" aria-hidden="true"></span>
+          <div class="fcc-avatar fcc-avatar--site">
+            <img class="fcc-logo fcc-avatar-img fcc-avatar-img--site" src="logo-fcc.jpg" width="64" height="64" alt="Fundação Carlos Chagas">
+            <div class="logo-fallback brand-fallback" hidden>
+              <strong>FCC</strong>
+              <span>Fundação Carlos Chagas</span>
+            </div>
           </div>
         </div>
         <div class="brand-copy">
@@ -244,6 +262,6 @@
     <span id="toastText">Resumo copiado!</span>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
