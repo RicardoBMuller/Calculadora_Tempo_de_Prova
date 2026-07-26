@@ -9,7 +9,31 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="intro-playing">
+  <div class="intro-screen" id="introScreen" aria-hidden="true">
+    <div class="intro-screen__glow intro-screen__glow--one"></div>
+    <div class="intro-screen__glow intro-screen__glow--two"></div>
+    <div class="intro-card">
+      <div class="intro-orbit intro-orbit--one"></div>
+      <div class="intro-orbit intro-orbit--two"></div>
+      <div class="intro-logo-wrap">
+        <img class="fcc-logo intro-logo" src="logo-fcc.png" alt="Fundação Carlos Chagas">
+        <div class="logo-fallback" hidden>
+          <strong>FCC</strong>
+          <span>Fundação Carlos Chagas</span>
+        </div>
+      </div>
+      <div class="intro-copy">
+        <span class="intro-eyebrow">FUNDAÇÃO CARLOS CHAGAS</span>
+        <h1>Calculadora de duração de provas</h1>
+        <p>Preparando a experiência...</p>
+      </div>
+      <div class="intro-loader" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
   <div class="ambient ambient-one" aria-hidden="true"></div>
   <div class="ambient ambient-two" aria-hidden="true"></div>
   <div class="grid-noise" aria-hidden="true"></div>
@@ -17,7 +41,13 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand-card surface-fade">
-        <div class="brand-mark" aria-hidden="true">FCC</div>
+        <div class="brand-logo-holder">
+          <img class="fcc-logo brand-logo" src="logo-fcc.png" alt="Fundação Carlos Chagas">
+          <div class="logo-fallback brand-fallback" hidden>
+            <strong>FCC</strong>
+            <span>Fundação Carlos Chagas</span>
+          </div>
+        </div>
         <div class="brand-copy">
           <h1>Tempo de Prova</h1>
           <p>Calculadora de duração</p>
@@ -42,7 +72,7 @@
         </div>
         <div class="example-row"><span>Previsto</span><strong>10:00</strong></div>
         <div class="example-row"><span>Início real</span><strong>10:08</strong></div>
-        <div class="example-row"><span>Duração</span><strong>50 min</strong></div>
+        <div class="example-row"><span>Duração</span><strong>00:50</strong></div>
         <div class="example-result">
           <span>Novo encerramento</span>
           <strong>10:58</strong>
@@ -113,9 +143,10 @@
                   <span class="field-label">Duração da prova</span>
                   <span class="field-help">Tempo total que deve ser preservado</span>
                 </div>
-                <div class="duration-input-wrap">
-                  <input id="durationMinutes" type="number" min="1" max="720" step="1" value="50" inputmode="numeric" aria-label="Duração da prova em minutos" required>
-                  <span>min</span>
+                <div class="duration-input-wrap" aria-label="Duração da prova em horas e minutos">
+                  <input id="durationHours" type="text" inputmode="numeric" maxlength="2" value="00" aria-label="Horas de duração" autocomplete="off" required>
+                  <span class="duration-separator" aria-hidden="true">:</span>
+                  <input id="durationMinutes" type="text" inputmode="numeric" maxlength="2" value="50" aria-label="Minutos de duração" autocomplete="off" required>
                 </div>
               </div>
 
@@ -210,7 +241,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite">
-    <span class="toast-check">✓</span>
     <span id="toastText">Resumo copiado!</span>
   </div>
 
