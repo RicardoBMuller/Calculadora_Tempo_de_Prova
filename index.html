@@ -17,7 +17,7 @@
       .fcc-avatar-img--site{width:54px!important;height:54px!important;max-width:54px!important;max-height:54px!important;}
     }
   </style>
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body class="intro-playing">
   <div class="intro-screen" id="introScreen" aria-hidden="true">
@@ -41,6 +41,11 @@
         <span class="intro-eyebrow">FUNDAÇÃO CARLOS CHAGAS</span>
         <h1>Calculadora de duração de provas</h1>
         <p>Preparando a experiência...</p>
+        <div class="intro-visitor" id="introVisitor" aria-live="polite">
+          <span class="visitor-dot" aria-hidden="true"></span>
+          <span>Você é o visitante nº</span>
+          <strong id="introVisitorNumber">...</strong>
+        </div>
       </div>
       <div class="intro-loader" aria-hidden="true"><span></span><span></span><span></span></div>
     </div>
@@ -234,8 +239,15 @@
       </section>
 
       <footer class="main-footer">
-        <span>Os cálculos são feitos somente no navegador.</span>
-        <span>Sem cadastro • Sem servidor • Pronto para GitHub Pages</span>
+        <div class="footer-copy">
+          <span>Os cálculos são feitos somente no navegador.</span>
+          <span>GitHub Pages • Contador integrado ao Supabase</span>
+        </div>
+        <div class="access-counter" id="accessCounter" aria-live="polite" title="Total de sessões registradas no site">
+          <span class="access-counter__pulse" aria-hidden="true"></span>
+          <span>Total de acessos</span>
+          <strong id="footerVisitCount">...</strong>
+        </div>
       </footer>
     </main>
   </div>
@@ -244,6 +256,7 @@
     <span id="toastText">Resumo copiado!</span>
   </div>
 
-  <script src="app.js?v=5"></script>
+  <script src="config.js?v=1"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

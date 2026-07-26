@@ -4,6 +4,7 @@
   const HISTORY_KEY = "fcc_exam_time_history_single_v1";
   const MAX_HISTORY = 5;
   const INTRO_DURATION = 4000;
+  const VISITOR_SESSION_KEY = "fcc_calculadora_visit_number_v1";
 
   const el = {
     form: document.getElementById("examForm"),
@@ -31,6 +32,10 @@
     history: document.getElementById("historyList"),
     clearHistory: document.getElementById("clearHistoryBtn"),
     introScreen: document.getElementById("introScreen"),
+    introVisitor: document.getElementById("introVisitor"),
+    introVisitorNumber: document.getElementById("introVisitorNumber"),
+    accessCounter: document.getElementById("accessCounter"),
+    footerVisitCount: document.getElementById("footerVisitCount"),
     logos: [...document.querySelectorAll(".fcc-logo")]
   };
 
@@ -66,6 +71,118 @@
         }, 550);
       }
     }, INTRO_DURATION);
+  }
+
+  function formatVisitCount(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number) || number < 0) return "—";
+    return new Intl.NumberFormat("pt-BR").format(number);
+  }
+
+  function getSupabaseConfig() {
+    const config = window.FCC_CONFIG || {};
+    const url = String(config.SUPABASE_URL || "").trim().replace(/\/$/, "");
+    const key = String(config.SUPABASE_PUBLISHABLE_KEY || "").trim();
+
+    const invalid =
+      !/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) ||
+      !key ||
+      key.includes("COLE_AQUI");
+
+    if (invalid) return null;
+    return { url, key };
+  }
+
+  async function callCounterRpc(functionName) {
+    const config = getSupabaseConfig();
+    if (!config) throw new Error("Supabase não configurado no arquivo config.js.");
+
+    const response = await fetch(`${config.url}/rest/v1/rpc/${functionName}`, {
+      method: "POST",
+      headers: {
+        "apikey": config.key,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: "{}",
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      let detail = "";
+      try { detail = await response.text(); } catch { /* sem corpo */ }
+      throw new Error(`Falha no contador (${response.status}) ${detail}`.trim());
+    }
+
+    const data = await response.json();
+    const value = Number(data);
+    if (!Number.isFinite(value)) throw new Error("Resposta inválida do contador.");
+    return value;
+  }
+
+  function setVisitorNumber(visitorNumber, totalNumber = visitorNumber) {
+    if (el.introVisitorNumber) {
+      el.introVisitorNumber.textContent = formatVisitCount(visitorNumber);
+    }
+    if (el.footerVisitCount) {
+      el.footerVisitCount.textContent = formatVisitCount(totalNumber);
+    }
+    el.introVisitor?.classList.remove("is-error");
+    el.accessCounter?.classList.remove("is-error");
+  }
+
+  function setCounterUnavailable(message = "indisponível") {
+    if (el.introVisitorNumber) el.introVisitorNumber.textContent = message;
+    if (el.footerVisitCount) el.footerVisitCount.textContent = "—";
+    el.introVisitor?.classList.add("is-error");
+    el.accessCounter?.classList.add("is-error");
+  }
+
+  function readSessionVisitNumber() {
+    try {
+      const stored = sessionStorage.getItem(VISITOR_SESSION_KEY);
+      if (stored && /^\d+$/.test(stored)) return Number(stored);
+    } catch {
+      // Alguns navegadores podem bloquear sessionStorage.
+    }
+    return null;
+  }
+
+  function storeSessionVisitNumber(value) {
+    try {
+      sessionStorage.setItem(VISITOR_SESSION_KEY, String(value));
+    } catch {
+      // Se o navegador bloquear o armazenamento, o contador ainda funciona.
+    }
+  }
+
+  async function initVisitorCounter() {
+    const config = getSupabaseConfig();
+    if (!config) {
+      setCounterUnavailable("configure o Supabase");
+      console.warn("[FCC] Preencha SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY em config.js.");
+      return;
+    }
+
+    const sessionVisit = readSessionVisitNumber();
+
+    try {
+      if (sessionVisit !== null) {
+        // F5 na mesma aba mantém o mesmo número de visitante.
+        // O rodapé consulta o total mais atual sem incrementar novamente.
+        const currentTotal = await callCounterRpc("get_site_visit_count");
+        setVisitorNumber(sessionVisit, currentTotal);
+        return;
+      }
+
+      // Nova sessão: incrementa de forma atômica e recebe o número atribuído.
+      const assignedNumber = await callCounterRpc("register_site_visit");
+      storeSessionVisitNumber(assignedNumber);
+      setVisitorNumber(assignedNumber, assignedNumber);
+    } catch (error) {
+      console.error("[FCC] Não foi possível atualizar o contador de acessos:", error);
+      setCounterUnavailable();
+    }
   }
 
   function parseTime(value) {
@@ -378,6 +495,7 @@
   });
 
   setupLogos();
+  initVisitorCounter();
   initIntro();
   setDurationFields(50);
   renderHistory();
