@@ -9,6 +9,6 @@
   NUNCA coloque aqui Secret key, service_role ou qualquer chave privada.
 */
 window.FCC_CONFIG = {
-  SUPABASE_URL: "COLE_AQUI_A_PROJECT_URL",
-  SUPABASE_PUBLISHABLE_KEY: "COLE_AQUI_A_PUBLISHABLE_KEY"
+  SUPABASE_URL: "https://fxkjikfurlvfftpncunp.supabase.co/rest/v1/",
+  SUPABASE_PUBLISHABLE_KEY: "https://fxkjikfurlvfftpncunp.supabase.co/rest/v1/sb_publishable_tla6br_lPVuEPBgsMFEDCw_58Pp-7jA"
 };
