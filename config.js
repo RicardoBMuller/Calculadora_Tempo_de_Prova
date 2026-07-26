@@ -1,14 +1,15 @@
 /*
-  CONFIGURAÇÃO PÚBLICA DO SUPABASE
-  ---------------------------------
-  Preencha SOMENTE com:
-  1) Project URL
-  2) Publishable key (sb_publishable_...)
+  CONFIGURAÇÃO DO OCR.SPACE
 
-  A publishable key foi criada para uso no frontend e pode ficar no GitHub Pages.
-  NUNCA coloque aqui Secret key, service_role ou qualquer chave privada.
+  Cole sua chave gratuita abaixo e publique este arquivo junto com o site.
+
+  ATENÇÃO:
+  Como este site roda 100% no GitHub Pages, esta chave ficará visível
+  para quem inspecionar o código-fonte. Para este modo simples, o risco
+  principal é alguém consumir a sua franquia gratuita do OCR.Space.
 */
 window.FCC_CONFIG = {
-  SUPABASE_URL: "https://fxkjikfurlvfftpncunp.supabase.co",
-  SUPABASE_PUBLISHABLE_KEY: "https://fxkjikfurlvfftpncunp.supabase.co/rest/v1/sb_publishable_tla6br_lPVuEPBgsMFEDCw_58Pp-7jA"
+  OCRSPACE_API_KEY: "COLE_AQUI_SUA_CHAVE_OCR_SPACE",
+  OCRSPACE_ENDPOINT: "https://api.ocr.space/parse/image",
+  OCRSPACE_ENGINE: "3"
 };

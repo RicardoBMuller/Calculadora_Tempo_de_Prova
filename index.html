@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#17171f">
-  <meta name="description" content="Calculadora de duração de provas a partir do horário de início e da duração definida.">
+  <meta name="description" content="Calculadora de duração de provas com preenchimento manual ou leitura por foto usando OCR.Space.">
   <title>FCC • Calculadora de Provas</title>
   <link rel="icon" href="logo-fcc.jpg" type="image/jpeg">
   <style>
@@ -17,7 +17,7 @@
       .fcc-avatar-img--site{width:54px!important;height:54px!important;max-width:54px!important;max-height:54px!important;}
     }
   </style>
-  <link rel="stylesheet" href="styles.css?v=6">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body class="intro-playing">
   <div class="intro-screen" id="introScreen" aria-hidden="true">
@@ -41,11 +41,6 @@
         <span class="intro-eyebrow">FUNDAÇÃO CARLOS CHAGAS</span>
         <h1>Calculadora de duração de provas</h1>
         <p>Preparando a experiência...</p>
-        <div class="intro-visitor" id="introVisitor" aria-live="polite">
-          <span class="visitor-dot" aria-hidden="true"></span>
-          <span>Você é o visitante nº</span>
-          <strong id="introVisitorNumber">...</strong>
-        </div>
       </div>
       <div class="intro-loader" aria-hidden="true"><span></span><span></span><span></span></div>
     </div>
@@ -81,7 +76,7 @@
           <span class="mini-icon" aria-hidden="true">↗</span>
         </div>
         <p class="panel-text">
-          Informe o horário em que a prova começou e a duração total. O sistema calcula automaticamente o horário correto de encerramento.
+          Digite o horário e a duração ou fotografe o cartão da prova. A leitura por foto preenche os campos para você confirmar antes do cálculo.
         </p>
       </section>
 
@@ -134,6 +129,20 @@
               <span class="clock-center"></span>
             </div>
           </div>
+
+          <section class="ai-scan-card" aria-labelledby="aiScanTitle">
+            <div class="ai-scan-copy">
+              <span class="ai-chip">OCR • LEITURA POR FOTO</span>
+              <h4 id="aiScanTitle">Fotografe o cartão da prova</h4>
+              <p>A câmera lê o horário de início manuscrito e a duração impressa usando OCR.Space. Você confirma os dados antes do cálculo.</p>
+            </div>
+            <div class="ai-scan-actions">
+              <input id="examPhotoInput" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,image/*" capture="environment">
+              <button class="btn btn-camera" id="takePhotoBtn" type="button"><span>📷</span> Fotografar cartão</button>
+              <button class="btn btn-soft ai-gallery-btn" id="choosePhotoBtn" type="button"><span>▧</span> Escolher foto</button>
+            </div>
+            <div class="ai-note"><span>✦</span> A foto é enviada ao OCR.Space somente para extrair o texto do cartão. Confira os dados antes de confirmar.</div>
+          </section>
 
           <form id="examForm" novalidate>
             <div class="input-grid single-input-grid">
@@ -239,17 +248,76 @@
       </section>
 
       <footer class="main-footer">
-        <div class="footer-copy">
-          <span>Os cálculos são feitos somente no navegador.</span>
-          <span>GitHub Pages • Contador integrado ao Supabase</span>
-        </div>
-        <div class="access-counter" id="accessCounter" aria-live="polite" title="Total de sessões registradas no site">
-          <span class="access-counter__pulse" aria-hidden="true"></span>
-          <span>Total de acessos</span>
-          <strong id="footerVisitCount">...</strong>
-        </div>
+        <span>Os cálculos são feitos somente no navegador.</span>
+        <span>GitHub Pages • Leitura por OCR.Space Engine 3</span>
       </footer>
     </main>
+  </div>
+
+  <div class="ai-modal" id="aiModal" aria-hidden="true">
+    <div class="ai-modal-backdrop" id="aiModalBackdrop"></div>
+    <section class="ai-modal-card" role="dialog" aria-modal="true" aria-labelledby="aiModalTitle">
+      <button class="ai-modal-close" id="aiModalClose" type="button" aria-label="Fechar">×</button>
+
+      <div id="aiLoadingState" class="ai-state ai-state-loading">
+        <div class="ai-spinner" aria-hidden="true"></div>
+        <span class="ai-chip">LENDO FOTO</span>
+        <h3>Lendo o cartão da prova...</h3>
+        <p>O OCR está procurando o horário de início, a duração e a permanência mínima.</p>
+      </div>
+
+      <div id="aiConfirmState" class="ai-state hidden">
+        <div class="ai-modal-header">
+          <span class="ai-chip">DADOS IDENTIFICADOS</span>
+          <h3 id="aiModalTitle">Confira antes de calcular</h3>
+          <p>Corrija qualquer campo que não esteja igual ao cartão.</p>
+        </div>
+
+        <div class="ai-preview-wrap">
+          <img id="aiPhotoPreview" alt="Foto do cartão analisado">
+        </div>
+
+        <div class="ai-fields-grid">
+          <label class="ai-field">
+            <span>Horário de início</span>
+            <input id="aiStartTime" type="time" required>
+          </label>
+          <label class="ai-field">
+            <span>Duração</span>
+            <input id="aiDuration" type="text" inputmode="numeric" placeholder="01:00" maxlength="5" required>
+          </label>
+        </div>
+
+        <div class="ai-extra-grid">
+          <div><span>Permanência mínima</span><strong id="aiMinimumStay">—</strong></div>
+          <div><span>Qualidade da identificação</span><strong id="aiConfidence">—</strong></div>
+        </div>
+
+        <p class="ai-observation" id="aiObservation"></p>
+
+        <details class="ocr-raw-details" id="ocrRawDetails">
+          <summary>Ver texto reconhecido pelo OCR</summary>
+          <pre id="ocrRawText"></pre>
+        </details>
+
+        <p class="ai-validation" id="aiValidation" role="alert"></p>
+
+        <div class="ai-modal-actions">
+          <button class="btn btn-soft" id="aiRetryBtn" type="button">↺ Tirar outra foto</button>
+          <button class="btn btn-primary" id="aiConfirmBtn" type="button">✓ Confirmar e calcular</button>
+        </div>
+      </div>
+
+      <div id="aiErrorState" class="ai-state hidden">
+        <div class="ai-error-icon">!</div>
+        <span class="ai-chip">NÃO FOI POSSÍVEL LER</span>
+        <h3>Revise a foto e tente novamente</h3>
+        <p id="aiErrorMessage">Não foi possível identificar os dados com segurança.</p>
+        <div class="ai-modal-actions single">
+          <button class="btn btn-primary" id="aiErrorRetryBtn" type="button">📷 Tentar outra foto</button>
+        </div>
+      </div>
+    </section>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite">
@@ -257,6 +325,6 @@
   </div>
 
   <script src="config.js?v=1"></script>
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
