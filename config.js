@@ -9,7 +9,7 @@
   principal é alguém consumir a sua franquia gratuita do OCR.Space.
 */
 window.FCC_CONFIG = {
-  OCRSPACE_API_KEY: "K82786113188957",
+  OCRSPACE_API_KEY: "COLE_AQUI_SUA_CHAVE_OCR_SPACE",
   OCRSPACE_ENDPOINT: "https://api.ocr.space/parse/image",
   OCRSPACE_ENGINE: "3"
 };
